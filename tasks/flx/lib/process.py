@@ -1,6 +1,6 @@
-from subprocess import Popen, PIPE
 import sys
 from os import getcwd
+from subprocess import Popen, PIPE
 
 
 class Process:

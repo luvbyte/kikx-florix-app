@@ -1,10 +1,12 @@
 import json
-from neko import panel, js
-from neko.console import Console
-from neko.lib.process import sh
+import subprocess
 
 from datetime import datetime
-import subprocess
+
+from flx import panel, js
+from flx.lib.process import sh
+from flx.console import Console
+
 
 code = r"""
 <div class="flex-1 text-white flex flex-col overflow-y-auto">

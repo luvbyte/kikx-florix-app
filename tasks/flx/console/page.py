@@ -1,7 +1,7 @@
 from time import sleep
 
-from neko.ui import Animate, Div
-from neko.lib.utils import html_to_text, sanitize_html
+from flx.ui import Animate, Div
+from flx.lib.utils import html_to_text, sanitize_html
 
 
 class PageResult:
@@ -10,19 +10,14 @@ class PageResult:
 
   def get_input(self):
     return self._input
-  
+
   @property
   def is_closed(self):
-    self.get_input() == "__page__closed__"
+    return self.get_input() == "__page__closed__"
 
   @property
   def is_back(self):
-    self.get_input() == "__page__back__"
-
-  @property
-  def is_ok(self):
-    return not self.is_closed or not self.is_back
-
+    return self.get_input() == "__page__back__"
 
 class Page:
   def __init__(self, title=None, banner=None, back_button=False, close_button=False):
@@ -33,7 +28,7 @@ class Page:
     self.banner = banner
 
     self._input = None
-  
+
   def to_text(self, code):
     return html_to_text(code)
   
@@ -44,7 +39,7 @@ class Page:
     self.banner = banner
 
   def render_back_button(self):
-    if self.back_button is None:
+    if not self.back_button:
       return ""
     
     return '''
@@ -55,7 +50,7 @@ class Page:
     '''
 
   def render_close_button(self):
-    if self.close_button is None:
+    if not self.close_button:
       return ""
     
     return '''
@@ -86,7 +81,7 @@ class Page:
         <!-- Left Side -->
         <div class="flex items-center gap-2">
           {self.render_back_button()}
-          {f'<h1 class="text-md truncate">{self.to_text(self.title)}</h1>' if self.title else ''}
+          {f'<h1 class="text-lg text-bold truncate">{self.to_text(self.title)}</h1>' if self.title else ''}
         </div>
 
         <!-- Right Side -->
@@ -119,7 +114,7 @@ class Page:
 # Options page index style 
 class OptionsPage(Page):
   def __init__(self, options, title="Select an option", banner=None, back_button=False, close_button=False, display_index=False):
-    super().__init__(title=title, banner=banner,back_button=back_button, close_button=close_button)
+    super().__init__(title=title, banner=banner, back_button=back_button, close_button=close_button)
     self.options = options
     self.display_index = display_index
  
@@ -139,8 +134,11 @@ class OptionsPage(Page):
 
 
 class InputPage(Page):
-  def __init__(self, body=None, min_length=None, max_length=None, input_type=str, placeholder=None):
+  def __init__(self, body=None, min_length=None, max_length=None, input_type=str, placeholder=None, autohide=False):
     super().__init__()
+    
+    # Auto hide after getting input
+    self.autohide = autohide
 
     self.error_text = None
 
@@ -154,22 +152,33 @@ class InputPage(Page):
 
   def _validate(self, text):
     expected_type = self.input_type
+  
     try:
-      # Convert input to expected type
-      text = self.input_type(text)
+      text = expected_type(text)
     except (ValueError, TypeError):
-      raise TypeError(f"Expected type {expected_type.__name__}, got {type(text).__name__}")
-
-    # Min length
-    min_length = self.min_length
-    if min_length is not None and len(text) < min_length:
-      raise ValueError(f"Required minimum length is {min_length}")
-
-    # Max length
-    max_length = self.max_length
-    if max_length is not None and len(text) > max_length:
-      raise ValueError(f"Required maximum length is {max_length}")
-
+      raise TypeError(
+        f"Expected type {expected_type.__name__}, got {type(text).__name__}"
+      )
+  
+    min_length = getattr(self, "min_length", None)
+    max_length = getattr(self, "max_length", None)
+  
+    # ---- Numeric validation ----
+    if isinstance(text, (int, float)):
+      if min_length is not None and text < min_length:
+        raise ValueError(f"Minimum value allowed is {min_length}")
+  
+      if max_length is not None and text > max_length:
+        raise ValueError(f"Maximum value allowed is {max_length}")
+  
+    # ---- Length validation ----
+    elif hasattr(text, "__len__"):
+      if min_length is not None and len(text) < min_length:
+        raise ValueError(f"Required minimum length is {min_length}")
+  
+      if max_length is not None and len(text) > max_length:
+        raise ValueError(f"Required maximum length is {max_length}")
+  
     return text
 
   def validate(self, text: str) -> bool:
@@ -205,11 +214,13 @@ class InputPage(Page):
 
       self.error_text = None
   
-      result = PageResult(console.input(self.placeholder or "", autohide=False))
-      if not result.is_ok or self.validate(result.get_input()) is not None:
-        console.clear()
+      result = PageResult(console.input(self.placeholder or "", autohide=self.autohide))
+      if result.is_back or result.is_closed:
         return result
 
+      if self.validate(result.get_input()) is not None:
+        console.clear()
+        return result
 
 class IframePage(Page):
   def __init__(self, url):
@@ -278,3 +289,4 @@ class AnimationPage:
       sleep(self.delay)
 
     console.clear()
+

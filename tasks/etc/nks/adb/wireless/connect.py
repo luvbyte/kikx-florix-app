@@ -1,7 +1,7 @@
-from neko.console import SConsole
-from neko.console.page import InputPage
+from flx.console import SConsole
+from flx.console.page import InputPage
 
-from neko.lib.process import sh
+from flx.lib.process import sh
 
 console = SConsole(padding=2)
 

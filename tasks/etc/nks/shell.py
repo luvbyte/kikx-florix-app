@@ -1,19 +1,46 @@
-from neko import js, panel
-from neko.lib.process import sh
+import os
 from subprocess import PIPE
+
+from flx import js, panel
+from flx.lib.process import sh
+
+
 
 js.set_config("block-user-clear", False)
 js.set_config("block-user-input", False)
 
+js.run_code("$panel.addClass('p-1')")
+
+def print_command(command, error=False):
+  js.set_config("parse-ansi", False)
+  
+  name = "bg-red-400/60" if error else "bg-blue-400/60"
+  
+  print(f'<div class="mb-0.5 p-1 {name} rounded">{command}</div>')
+  js.set_config("parse-ansi", True)
+
 while True:
   input_text = js.ask_input("Enter command", autohide=False, effect="fadeIn").strip()
+  
+  print_command(input_text)
 
   if input_text == "exit":
     break
   elif input_text == "clear":
     js.run_code("clearPanel()")
+  elif input_text.startswith("cd"):
+    parts = input_text.split(maxsplit=1)
+    dest = "~" if len(parts) == 1 else parts[1]
+    
+    dest = os.path.expanduser(dest)
+    os.chdir(dest)
+    
+    print(f"Cwd: {os.getcwd()}")
   else:
     process = sh(input_text).pipe(stderr=PIPE)
-    if process.returncode != 0: # success
-      print(f"Error ({process.returncode}): {process.error()}")
+    
+    error = process.error().strip()
+    
+    if process.returncode != 0 and error: # success
+      print_command(f"Error ({process.returncode}): {error}", error=True)
 

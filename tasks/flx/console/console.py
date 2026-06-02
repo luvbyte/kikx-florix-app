@@ -5,20 +5,20 @@ from time import sleep
 from pathlib import Path
 from datetime import datetime
 
-from neko import panel, js
-from neko.ui import Div, Text, Animate, Pre
-from neko.ui.helpers import ClassBuilder
+from flx import panel, js
+from flx.ui import Div, Text, Animate, Pre
+from flx.ui.helpers import ClassBuilder
 
-from neko.lib.utils import clean, escape, get_item
-from neko.widgets.fs import FSWrapper
-from neko.widgets.dialogue import AlertWrapper
+from flx.lib.utils import clean, escape, get_item, sanitize_html
+from flx.widgets.fs import FSWrapper
+from flx.widgets.dialogue import AlertWrapper
 
 
 
 # super Console with more features
 # Themes: default, neon, matrix, scifi, solarized
 class SConsole:
-  def __init__(self, font_size: int = 14, theme: str = "default", padding=None):
+  def __init__(self, font_size: int = 14, theme: str = "default", padding=None, auto_scroll=True):
     panel.clear()
     self.font_size = font_size
     self.padding = padding
@@ -26,6 +26,9 @@ class SConsole:
     self._box = Div()
     self._history = []
     self.set_theme(theme)
+
+    self.auto_scroll = auto_scroll
+
     panel.inject(self.box)
 
   def init(self):
@@ -34,6 +37,12 @@ class SConsole:
   @property
   def box(self):
     return self._box
+  
+  def clean(self, *args, **kwargs):
+    return clean(*args, **kwargs)
+  
+  def sanitize(self, html_content):
+    return sanitize_html(html_content)
   
   def set_theme(self, theme_name: str):
     """
@@ -65,10 +74,11 @@ class SConsole:
     self.box.cls.clear()
     self.box.add_class(text)
   
-  def append(self, el, auto_scroll=True):
+  def append(self, el, auto_scroll=False):
     self.box.append(el)
-    self.scroll_to_bottom()
-  
+    if self.auto_scroll or auto_scroll:
+      self.scroll_to_bottom()
+
   def replace(self, el):
     self.box.replace(el)
 
@@ -81,36 +91,33 @@ class SConsole:
     pattern = re.compile(r'\[([a-zA-Z]+)\](.*?)\[/\1\]', re.DOTALL)
     return pattern.sub(replacer, text)
 
-  def print(self, *lines, size=None, center=False, padding=None, dom_purify=True, bg=None, fg=None, class_list=""):
-    self.append(
-      Div(*[
-        self._parse_markup(clean(str(line))) if dom_purify else self._parse_markup(line)
+  def print(self, *lines, size=None, center=False, padding=None, dom_purify=True, bg=None, fg=None, class_list="", auto_scroll=False, effect=None):
+    div = Div(*[
+        f"<p>{self._parse_markup(clean(str(line))) if dom_purify else self._parse_markup(self.sanitize(line))}</p>"
         for line in lines
-      ]).add_class(
+      ]).add_class("w-full flex gap-x-1").add_class(
         ClassBuilder()
         .add_if(f"p-{padding}", padding)
         .add_if(f"text-[{size}px]", size)
-        .add_if("text-center", center)
+        .add_if("justify-center", center)
         .add_if(f"bg-{bg}", bg)
         .add_if(f"text-{fg}", fg)
         .add_multiple(class_list.split())
         .done()
       )
-    )
-  
+    self.append(Animate(div, effect=effect) if isinstance(effect, str) else div, auto_scroll=auto_scroll)
+
   def pre(self, text: str, height: str = "auto", justify: str = "start", align: str = "start", text_align: str = "start", effect: str = None) -> Pre:
     el = Pre(text)
     el.add_style("height", height)
     el.add_class(
       "text-xs", "flex", f"justify-{justify}", f"items-{align}", f"text-{text_align}"
     )
-    if effect:
-      el = Animate(el, effect)
-    self.append(el)
+    self.append(Animate(el, effect=effect) if isinstance(effect, str) else el)
     
     return el
 
-  def pre_center(self, text: str, text_align: str = "start", effect: str = None, wait: int = 1) -> Pre:
+  def pre_center(self, text: str, text_align: str = "start", effect = None, wait: int = 1) -> Pre:
     self.clear()
     el = self.pre(
       text, height="100%", justify="center", align="center", text_align=text_align, effect=effect
@@ -127,15 +134,15 @@ class SConsole:
   def log(self, message):
     self.print(ConsoleLogger.format_log(message))
 
-  def print_error(self, message):
-    self.print(f"[red][ERROR][/red] {message}")
+  def print_error(self, message, *args, **kwargs):
+    self.print(f"[red][ERROR][/red] {message}", *args, **kwargs)
 
-  def print_success(self, message):
-    self.print(f"[green][OK][/green] {message}")
+  def print_success(self, message, *args, **kwargs):
+    self.print(f"[green][OK][/green] {message}", *args, **kwargs)
 
   def print_json(self, obj):
     self.print(ConsoleHelpers.format_json(obj), dom_purify=False)
-  
+
   def wait(self, seconds):
     sleep(seconds)
 
@@ -157,6 +164,10 @@ class SConsole:
   def alert(self):
     return AlertWrapper()
 
+  @property
+  def wg(self):
+    return ConsoleWidgets(self)
+
   def render(self):
     panel.inject(self.box)
   
@@ -174,9 +185,6 @@ class SConsole:
     })
     js.run_code(f"kikxApp.system.alert({data})")
 
-  @property
-  def wg(self):
-    return ConsoleWidgets(self)
 
 class ConsoleThemes:
   THEMES = {
@@ -233,7 +241,7 @@ class ConsoleHelpers:
 class ConsoleWidgets:
   def __init__(self, console):
     self.console = console
-    self.print = console.print
+    self.print = self.console.print
   
   def panel(self, message: str, title: str="", type='info', collapsible=False, open_by_default=True):
     color_map = {
@@ -249,7 +257,7 @@ class ConsoleWidgets:
     header_html = f'<div class="font-bold text-lg">{clean(title)}</div>'
     message_html = f'<div class="whitespace-pre-wrap">{clean(str(message))}</div>'
   
-    self.print(f'''
+    self.console.append(f'''
       <details {"open" if open_by_default else ""} class="p-2 {bg_class} {text_class} border-l-4 border-white/20 shadow-sm group">
         <summary class="py-2 cursor-pointer font-semibold text-white/90">{clean(title)}</summary>
         <div>{message_html}</div>
@@ -259,7 +267,7 @@ class ConsoleWidgets:
         {header_html}
         {message_html}
       </div>
-    ''', dom_purify=False)
+    ''')
 
   def table(self, data, headers=None, border=True, striped=True, size='sm', align="left"):
     if not data:
@@ -307,7 +315,7 @@ class ConsoleWidgets:
       html.append("</tr>")
     html.append("</tbody></table></div>")
   
-    self.print("".join(html), dom_purify=False)
+    self.console.append("".join(html))
 
   def code_block(self, code: str, language=""):
     html = f'''
@@ -315,7 +323,7 @@ class ConsoleWidgets:
         <code class="language-{language}">{clean(code)}</code>
       </pre>
     '''
-    self.print(html, dom_purify=False)
+    self.console.append(html)
 
   def copy_box(self, preview: str, copy_text: str):
     escaped_copy = escape(copy_text).replace("'", "\\'")
@@ -344,7 +352,7 @@ class ConsoleWidgets:
       </div>
     '''
   
-    self.print(html, dom_purify=False)
+    self.console.append(html)
   
   def stat_box(title: str, value: str, icon: str = "📊", color="blue-500"):
     return f'''
@@ -356,12 +364,12 @@ class ConsoleWidgets:
 
   def info_card(self, title: str, lines: list[str], icon="", bg="bg-slate-800/60"):
     content = "<br>".join([clean(line) for line in lines])
-    self.print(f'''
+    self.console.append(f'''
       <div class="{bg} border border-white/10 rounded py-4 px-2 shadow text-white/80">
         <div class="text-lg font-bold">{icon} {clean(title)}</div>
         <div class="text-sm whitespace-pre-wrap">{content}</div>
       </div>
-    ''', dom_purify=False)
+    ''')
 
   def mini_table(self, data: dict, color="white/60"):
     rows = "".join([
@@ -369,15 +377,15 @@ class ConsoleWidgets:
       f'<span class="font-semibold">{clean(str(k))}</span><span>{clean(str(v))}</span></div>'
       for k, v in data.items()
     ])
-    self.print(f'<div class="my-2 px-3">{rows}</div>', dom_purify=False)
+    self.console.append(f'<div class="my-2 px-3">{rows}</div>')
 
   def quote_box(self, message: str, author: str = "", color="purple-300"):
-    self.print(f'''
+    self.console.append(f'''
     <div class="italic text-{color} bg-white/5 p-4 rounded border-l-4 border-{color} my-2">
       “{clean(message)}”
       {f'<div class="text-sm text-right mt-2">— {clean(author)}</div>' if author else ""}
     </div>
-    ''', dom_purify=False)
+    ''')
 
   def diff(self, old, new, context_lines=3):
     if not isinstance(old, str): 
@@ -405,7 +413,7 @@ class ConsoleWidgets:
       else:
         html_lines.append(f'<div class="text-white/70">{clean(line)}</div>')
   
-    self.print(*html_lines, dom_purify=False)
+    self.console.append("".join(html_lines))
   
 
 # basic console for simple scripts

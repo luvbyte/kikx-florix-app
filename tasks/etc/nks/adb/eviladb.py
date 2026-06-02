@@ -3,16 +3,13 @@ import json
 import subprocess
 
 from uuid import uuid4
-
-
 from time import sleep
 from pathlib import Path
 
+from flx.console import SConsole
 from concurrent.futures import ThreadPoolExecutor
 
 from typing import Optional, List, Dict
-
-from neko.console import SConsole
 
 
 console = SConsole()

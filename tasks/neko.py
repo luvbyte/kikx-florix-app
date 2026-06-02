@@ -9,16 +9,16 @@ from sys import argv
 from time import sleep
 from pathlib import Path
 from random import choice
-from importlib import import_module, reload
 from subprocess import PIPE
+from importlib import import_module, reload
 
-from neko import js, panel
-from neko.console import Console
-from neko.banners import BANNERS
-from neko.ui import Div, Pre, Center, Animate, Text, Padding, Element
-from neko.lib.utils import clean, sanitize_html
-from neko.lib.process import sh
-from neko.app import JApp
+from flx.app import JApp
+from flx import js, panel
+from flx.lib.process import sh
+from flx.console import Console
+from flx.banners import BANNERS
+from flx.lib.utils import clean, sanitize_html
+from flx.ui import Div, Pre, Center, Animate, Text, Padding, Element
 
 from typing import List, Union
 
@@ -96,10 +96,8 @@ def run_script(path: Path, *args) -> Union[None, str]:
   # lua file simple 
   elif path.suffix == ".lua":
     from lupa import LuaRuntime
-    from neko import neko_module
-  
+
     runtime = LuaRuntime()
-    runtime.globals().neko = neko_module
 
     with open(path, "r") as file:
       runtime.execute(file.read())

@@ -42,7 +42,11 @@ def set_config(config: str, value: bool):
   config_map = {
     "block-user-input": "blockUserInput",
     "block-user-clear": "blockUserClear",
+
+    "parse-ansi": "setParseAnsi",
+    "dom-purify": "setDomPurify",
     "script-stdout": "setRawOutput",
+
     "block-kill-task": "blockUserKillTask",
     "script-stdout-parse": "setRawOutputHTML",
     "auto-append-scroll": "setAutoAppendScroll",

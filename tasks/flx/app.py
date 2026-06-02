@@ -1,9 +1,11 @@
 import json
+
 from .ui import Text
 from .lib.utils import clean
 from .lib.crypto import text_to_base62, base62_to_text
 
 from typing import Any
+
 
 
 def ref(text: str) -> Text:

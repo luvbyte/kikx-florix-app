@@ -1,11 +1,11 @@
 import os
 from pathlib import Path
 
-from neko.ui import Div
-from neko.app import JApp
-from neko.lib.utils import clean
+from flx.ui import Div
+from flx.app import JApp
+from flx.lib.utils import clean
 
-from neko import panel
+from flx import panel
 
 from typing import List, Any
 

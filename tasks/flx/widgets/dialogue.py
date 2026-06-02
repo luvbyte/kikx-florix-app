@@ -1,12 +1,14 @@
-from neko.ui import Div, Text, Animate
-from neko.app import JApp
-
-from typing import List
 from pathlib import Path
 
-from neko import panel
+from flx import panel
 
-from neko.lib.utils import clean
+from flx.app import JApp
+from flx.ui import Div, Text, Animate
+from flx.lib.utils import clean
+
+from typing import List
+
+
 
 class Alert(Div):
   def __init__(self, message: str, title=None, atype="info", confirm=False):

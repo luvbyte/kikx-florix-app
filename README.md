@@ -1,1 +1,1 @@
-Script runner!
+Tiny script runner!

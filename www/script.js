@@ -10,7 +10,7 @@ function _deepCleanObject(obj) {
 
       // Recursively clean if it's an object or array
       if (typeof value === "object" && value !== null) {
-        deepCleanObject(value);
+        _deepCleanObject(value);
       }
 
       // Delete the key from the parent object
@@ -30,7 +30,17 @@ const $taskTitle = $("#task-title");
 
 let rawOutputPanel = $panel;
 
+function resetPanelClass() {
+  $panel.attr(
+    "class",
+    "flex-1 relative flex flex-col bg-black/40 w-full border border-white text-white text-xs overflow-auto rounded-lg rounded-tl-none rounded-br-none"
+  );
+}
+
 // ========== GLOBAL STATE ==========
+
+const ansi_up = new AnsiUp();
+ansi_up.use_classes = true;
 
 let currentTask = null;
 let runningScript = "";
@@ -38,8 +48,11 @@ let runningScript = "";
 // usefull for scripts
 const tempObjects = {};
 const AppConfig = {
-  rawOutput: true, // stdout to panel
-  rawOutputHTML: false, // adds stdout html code
+  rawOutput: true, // should append to panel
+
+  parseAnsi: true, // for raw output from process
+  useDomPurify: true, // Dom purify
+  rawOutputHTML: false, // Html code * / Text
 
   blockUserKillTask: false, // stop user kill task
   blockUserInput: true, // Blocks user input
@@ -62,6 +75,14 @@ const setRawOutput = (enable = true) => {
   AppConfig.rawOutput = enable;
 };
 
+const setParseAnsi = (enable = true) => {
+  AppConfig.parseAnsi = enable;
+};
+
+const setDomPurify = (enable = true) => {
+  AppConfig.useDomPurify = enable;
+};
+
 const setAutoAppendScroll = (enable = true) => {
   AppConfig.autoAppendScroll = enable;
 };
@@ -78,8 +99,12 @@ const setRawOutputPanel = selector => {
   rawOutputPanel = $(selector);
 };
 
+// After every script complete neko runs this
 const setAppDefaultConfig = () => {
   setRawOutput(true);
+
+  setParseAnsi(true);
+  setDomPurify(true);
   setRawOutputHTML(false);
 
   blockUserInput(true);
@@ -87,6 +112,7 @@ const setAppDefaultConfig = () => {
   blockUserKillTask(false);
   setAutoAppendScroll(true);
 
+  resetPanelClass();
   rawOutputPanel = $panel;
   _deepCleanObject(tempObjects);
 };
@@ -99,7 +125,7 @@ function scrollToBottom(selector = null) {
   const scrollTop = $el.scrollTop();
   const clientHeight = $el.innerHeight();
 
-  if (scrollHeight - (scrollTop + clientHeight) < 100) {
+  if (scrollHeight - (scrollTop + clientHeight) < 400) {
     $el.scrollTop(scrollHeight);
   }
 }
@@ -164,10 +190,37 @@ const setSubTaskName = (name = null) => {
 function exec(outputText) {
   // Handles non-JSON or unrecognized events
   function _defaultOutput(text) {
-    if (AppConfig.rawOutput) {
-      const content = AppConfig.rawOutputHTML ? text : $("<div>").text(text);
-      rawOutputPanel.append(content);
+    if (!AppConfig.rawOutput) return;
+
+    let content = text;
+
+    // ANSI parsing
+    if (AppConfig.parseAnsi) {
+      content = ansi_up.ansi_to_html(content);
     }
+
+    // DOMPurify sanitization
+    if (AppConfig.useDomPurify) {
+      content = DOMPurify.sanitize(content, {
+        FORBID_TAGS: ["script", "iframe", "object", "embed"]
+      });
+    }
+
+    let element;
+
+    // If both features are disabled
+    if (!AppConfig.parseAnsi && !AppConfig.useDomPurify) {
+      if (AppConfig.rawOutputHTML) {
+        element = $("<div>").html(content);
+      } else {
+        element = $("<div>").text(content);
+      }
+    } else {
+      element = $("<div>").html(content);
+    }
+
+    rawOutputPanel.append(element);
+
     if (AppConfig.autoAppendScroll) scrollToBottom();
   }
 
@@ -190,13 +243,13 @@ function exec(outputText) {
         console.error("Error in eval:", e);
       }
       break;
-    case "html":
+    case "html": // Raw html
       $(payload.element).html(payload.content);
       break;
     case "text":
       $(payload.element).text(payload.content);
       break;
-    case "append":
+    case "append": // Dangerous
       $(payload.element).append(payload.content);
       break;
     case "clear":

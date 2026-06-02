@@ -1,8 +1,10 @@
 import json
 from uuid import uuid4
+
+from flx import js
+from flx.lib.utils import Events
+
 from typing import Callable, Union, Optional, List, Dict, Any, Iterable
-from .. import js
-from neko.lib.utils import Events
 
 VOID_TAGS = [
   "area", "base", "br", "col", "embed", "hr", "img", "input",

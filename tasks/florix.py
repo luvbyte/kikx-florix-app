@@ -1,5 +1,6 @@
-from neko.console import Console
+from neko.console import SConsole
 
 
-console = Console()
+console = SConsole()
 
+console.print("Florix under development")

@@ -1,5 +1,6 @@
 from .ui import Pre, Text, Animate
 
+
 B1 = Animate(Pre(Text(r"""
 ♡  /)/)
  （„• ֊ •„)♡              
@@ -49,5 +50,5 @@ F
 B5.add_class("w-full h-full flex justify-center items-start text-sm")
 
 
-BANNERS = [B1, B2, B3, B5]
+BANNERS = [B3, B1, B2, B5]
 

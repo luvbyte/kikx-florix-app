@@ -1,10 +1,12 @@
-from urllib.parse import urljoin
-import argparse
 import json
+import argparse
+
 from pathlib import Path
 
-from neko.console import SConsole
-from neko.ui import Animate, Div, Pre, Element
+from urllib.parse import urljoin
+from flx.console import SConsole
+from flx.ui import Animate, Div, Pre, Element
+
 
 
 console = SConsole()

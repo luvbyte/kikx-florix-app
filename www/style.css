@@ -24,3 +24,13 @@ h1 {
 .font-heading {
   font-family: 'Jost', sans-serif;
 }
+
+
+
+.ansi-red-fg { color: #ff6b6b; }
+.ansi-green-fg { color: #51cf66; }
+.ansi-yellow-fg { color: #ffd43b; }
+.ansi-blue-fg { color: #4dabf7; }
+.ansi-magenta-fg { color: #f783ac; }
+.ansi-cyan-fg { color: #66d9e8; }
+.ansi-white-fg { color: #f8f9fa; }

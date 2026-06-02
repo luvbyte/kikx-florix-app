@@ -1,5 +1,6 @@
 from .ui import Element, Template
 
+
 class Colors:
   # Theme Colors
   primary = "bg-blue-500"         # Trustworthy & strong

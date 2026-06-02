@@ -45,12 +45,12 @@ def safe_code(html, *args, **kwargs):
 # so the browser shows them literally instead of interpreting them.
 # example: html.escape("<b>Hello</b>")
 # Output: "&lt;b&gt;Hello&lt;/b&gt;"
-def escape(text: str):
-  return html.escape(text)
+def escape(*args, **kwargs):
+  return html.escape(*args, **kwargs)
 
 # Html to text
-def html_to_text(text: str) -> str:
-  return escape(text)
+def html_to_text(*args, **kwargs) -> str:
+  return escape(*args, **kwargs)
 
 def sanitize_js_string(value: str) -> str:
   return (

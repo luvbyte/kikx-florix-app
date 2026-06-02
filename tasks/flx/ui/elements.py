@@ -1,6 +1,10 @@
+from flx import js
+
 from .base import Element
-from .. import js
+
 from typing import Optional, Any, Union
+
+
 
 class Div(Element):
   def __init__(self, *children: Any):
