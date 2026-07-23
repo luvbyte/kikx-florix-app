@@ -184,7 +184,7 @@ def display_devices() -> Device:
       return devices_list[index]
 
 # wait for device
-console.pre_center("\n[...] Listening [...]\n")
+console.pre_center("[...] Listening [...]")
 
 # User will select device
 device = display_devices()

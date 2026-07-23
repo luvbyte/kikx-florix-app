@@ -1,9 +1,22 @@
 import os
+import json
 from subprocess import PIPE
-
 from flx import js, panel
 from flx.lib.process import sh
 
+
+INTRO = """
+SIMPLE SHELL
+
+🟨🟨🟨🟨🟨🟨🟨🟨🟨
+🟨🟨🟨🟨🟨🟨🟨🟨🟨
+🟨🐧🟨🐧🟨🐧🟨🐧🟨
+🟧🟧🟧🟧🟧🟧🟧🟧🟧
+
+It's not a real TTY.
+Long-running programs may not work.
+
+"""
 
 
 js.set_config("block-user-clear", False)
@@ -19,6 +32,11 @@ def print_command(command, error=False):
   print(f'<div class="mb-0.5 p-1 {name} rounded">{command}</div>')
   js.set_config("parse-ansi", True)
 
+def print_intro():
+  panel.append(f'<pre class="flex justify-center text-center pt-1 bg-purple-400/20 rounded mb-1 animate__animated animate__fadeIn">{INTRO}</pre>')
+
+print_intro()
+
 while True:
   input_text = js.ask_input("Enter command", autohide=False, effect="fadeIn").strip()
   
@@ -29,13 +47,16 @@ while True:
   elif input_text == "clear":
     js.run_code("clearPanel()")
   elif input_text.startswith("cd"):
-    parts = input_text.split(maxsplit=1)
-    dest = "~" if len(parts) == 1 else parts[1]
-    
-    dest = os.path.expanduser(dest)
-    os.chdir(dest)
-    
-    print(f"Cwd: {os.getcwd()}")
+    try:
+      parts = input_text.split(maxsplit=1)
+      dest = "~" if len(parts) == 1 else parts[1]
+      
+      dest = os.path.expanduser(dest)
+      os.chdir(dest)
+      
+      print(f"Cwd: {os.getcwd()}")
+    except Exception as e:
+      print_command(f"Error : {e}", error=True)
   else:
     process = sh(input_text).pipe(stderr=PIPE)
     

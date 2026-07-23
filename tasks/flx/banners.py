@@ -50,5 +50,5 @@ F
 B5.add_class("w-full h-full flex justify-center items-start text-sm")
 
 
-BANNERS = [B3, B1, B2, B5]
+BANNERS = [B1, B3, B2, B5]
 

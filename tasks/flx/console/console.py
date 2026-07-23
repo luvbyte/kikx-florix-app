@@ -190,7 +190,7 @@ class ConsoleThemes:
   THEMES = {
     'default': {
       'name': 'Default',
-      'bg': 'bg-slate-800/60',
+      'bg': '',
       'text': 'text-white',
       'scrollbar': 'scrollbar-thin scrollbar-thumb-white/20',
       'border': '',

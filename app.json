@@ -2,26 +2,23 @@
   "name": "com.kikx.florix",
   "title": "Florix",
   "author": "luvbyte",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Tiny script runner",
   "category": "Tools",
-  "kikx_version": "0.2.0",
-
+  "kikx_version": "0.3.0",
   "include": ["public", "tasks", "www"],
-
   "iframe": {
     "allowfullscreen": true,
     "allow": ["screen-wake-lock", "clipboard-read", "clipboard-write"],
     "sandbox": ["allow-scripts"]
   },
   "system": {
-    "access": ["funcx", "notify", "alert"]
+    "access": ["funcx", "alert"]
   },
   "modules": {
     "tasks": {
       "shell": true
     }
   },
-
   "theme": "transparent"
 }

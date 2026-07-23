@@ -1,1 +1,2 @@
+echo "Scanning..."
 adb devices

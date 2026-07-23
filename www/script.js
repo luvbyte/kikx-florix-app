@@ -1,4 +1,4 @@
-const kikxApp = new kikxSdk.KikxAppClient();
+const kikxApp = new kikxSdk.createClientApp();
 const appTasks = new kikxSdk.AppTasks(kikxApp);
 
 let mainTask = "neko";
@@ -58,7 +58,7 @@ const AppConfig = {
   blockUserInput: true, // Blocks user input
   blockUserClear: true, // clear button at top
 
-  autoAppendScroll: true // auto scrolls on output
+  autoAppendScroll: true // auto scrolls on append text
 };
 
 // ========== CONFIG HELPERS ==========
@@ -99,7 +99,7 @@ const setRawOutputPanel = selector => {
   rawOutputPanel = $(selector);
 };
 
-// After every script complete neko runs this
+// After every script complete set defaults
 const setAppDefaultConfig = () => {
   setRawOutput(true);
 
@@ -249,7 +249,7 @@ function exec(outputText) {
     case "text":
       $(payload.element).text(payload.content);
       break;
-    case "append": // Dangerous
+    case "append": // append to element
       $(payload.element).append(payload.content);
       break;
     case "clear":
@@ -270,17 +270,21 @@ function sendInput(cmd) {
     console.log(e);
   }
 }
+
 function sendEvent(event, payload) {
   sendInput(JSON.stringify({ event, payload }));
 }
+
 function sendError(error) {
   sendEvent("error", error);
 }
-function runFlorixTask(cmd) {
+
+async function runFlorixTask(cmd) {
   if (currentTask || !cmd) return;
 
   runningScript = cmd;
   const task = appTasks.createTask(cmd);
+  await task.init();
 
   $panel.html(`
     <div class="w-full h-full bg-gray-800/40 flex flex-col justify-center items-center font-bold ">
@@ -293,8 +297,9 @@ function runFlorixTask(cmd) {
   let errorFlag = false;
   let successFlag = false;
 
-  task.on(data => {
-    switch (data.status) {
+  // { output: {}, status }
+  task.on(({ output, status }) => {
+    switch (status) {
       case "started": // on running
         successFlag = true;
 
@@ -329,13 +334,13 @@ function runFlorixTask(cmd) {
         break;
 
       case "output":
-        exec(data.output);
+        exec(output.message);
         break;
 
       case "error":
         errorFlag = true;
         $taskTitle.css("color", "#f28b82");
-        $panel.text(`Error: ${data.output}`);
+        $panel.text(`Error: ${output}`);
         break;
     }
   });

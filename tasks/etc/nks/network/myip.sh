@@ -1,6 +1,10 @@
 #!/bin/bash
 # myip.sh - Show public IP and location info
 
+echo "Checking from https://ipinfo.io"
+echo "|"
+echo "|"
+
 DATA=$(curl -s https://ipinfo.io/json)
 
 IP=$(echo "$DATA" | grep '"ip"' | cut -d '"' -f4)

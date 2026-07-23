@@ -40,15 +40,21 @@ def eval(code):
 # ----- setting config
 def set_config(config: str, value: bool):
   config_map = {
+    # Blocks user input
     "block-user-input": "blockUserInput",
+    # Blocks user clear option
     "block-user-clear": "blockUserClear",
 
+    # Parse ansi code
     "parse-ansi": "setParseAnsi",
     "dom-purify": "setDomPurify",
     "script-stdout": "setRawOutput",
 
+    # Block task stopping
     "block-kill-task": "blockUserKillTask",
+    # Render script output html
     "script-stdout-parse": "setRawOutputHTML",
+    # Auto scroll on append
     "auto-append-scroll": "setAutoAppendScroll",
   }
 
