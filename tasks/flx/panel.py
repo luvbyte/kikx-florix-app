@@ -17,11 +17,10 @@ def append(el):
   
   recursive_emit(el, "injected")
 
-
 def text(el):
   js.text("#panel", el)
 
 def clear(force=False):
   force = "true" if force else "false"
   js.run_code(f"clearPanel({force})")
-  
+

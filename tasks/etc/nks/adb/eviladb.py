@@ -84,14 +84,6 @@ class Device:
     self.model = prop(self.serial, "ro.product.model")
     self.manufacturer = prop(self.serial, "ro.product.manufacturer")
 
-    #"manufacturer": prop("ro.product.manufacturer"),
-    #"brand": prop("ro.product.brand"),
-    #"model": prop("ro.product.model"),
-    #"device": prop("ro.product.device"),
-    #"product": prop("ro.product.name"),
-    #"android_version": prop("ro.build.version.release"),
-    #"sdk_version": prop("ro.build.version.sdk")
-    
     # /storage
     self.path: Path = create_dirs(Path(os.environ.get("KIKX_HOME_PATH", "")) / f"Documents/eviladb/{self.manufacturer}_{self.model}_{self.id}")
     # /storage/files

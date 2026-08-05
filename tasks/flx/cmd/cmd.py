@@ -344,7 +344,7 @@ class ISCommand(ICommand):
       desc = inspect.getdoc(fn) or "No description"
 
       elements.append(f"""
-      <div class="p-1 text-sm rounded border border-zinc-700 bg-zinc-900 text-zinc-100">
+      <div class="p-1 text-sm rounded border border-zinc-700 bg-zinc-900/40 text-zinc-100">
         <span class="text-green-400">{scr.clean(name)}</span>
         <span class="text-zinc-400 px-2">-</span>
         <span class="text-zinc-300">{scr.clean(desc)}</span>

@@ -2,7 +2,7 @@
   "name": "com.kikx.florix",
   "title": "Florix",
   "author": "luvbyte",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Tiny script runner",
   "category": "Tools",
   "kikx_version": "0.3.0",

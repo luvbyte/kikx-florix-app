@@ -1,4 +1,4 @@
-from neko.console import SConsole
+from flx.console import SConsole
 
 
 console = SConsole()

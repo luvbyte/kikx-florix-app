@@ -91,6 +91,15 @@ class SConsole:
     pattern = re.compile(r'\[([a-zA-Z]+)\](.*?)\[/\1\]', re.DOTALL)
     return pattern.sub(replacer, text)
 
+  def color_box(self, text: str, color: str = "gray", effect="fadeIn"):
+    div = Div(f"""
+      <div class="bg-{color}-400/60 border-b border-{color}-300/60 p-2 text-{color}-100 shadow-sm">
+        {clean(str(text))}
+      </div>
+    """)
+
+    self.append(Animate(div, effect=effect) if isinstance(effect, str) else div, auto_scroll=True)
+
   def print(self, *lines, size=None, center=False, padding=None, dom_purify=True, bg=None, fg=None, class_list="", auto_scroll=False, effect=None):
     div = Div(*[
         f"<p>{self._parse_markup(clean(str(line))) if dom_purify else self._parse_markup(self.sanitize(line))}</p>"
@@ -180,11 +189,10 @@ class SConsole:
   def notify(self, message, type='info', priority = "normal"):
     data = json.dumps({
       "type": type,
-      "msg": message,
+      "message": message,
       "priority": priority
     })
     js.run_code(f"kikxApp.system.alert({data})")
-
 
 class ConsoleThemes:
   THEMES = {
