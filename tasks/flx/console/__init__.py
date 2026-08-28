@@ -1,1 +1,1 @@
-from .console import Console, SConsole
+from .console import Console

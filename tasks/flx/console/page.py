@@ -3,7 +3,7 @@ from time import sleep
 
 from flx.ui import Animate, Div
 from flx.lib.crypto import generate_uuid
-from flx.lib.utils import html_to_text, sanitize_html
+from flx.lib.utils import sanitize_html, clean
 
 
 # Pages Console
@@ -51,17 +51,14 @@ class Page:
     self.title = title
     self.back_button = back_button
     self.close_button = close_button
-    
+
     self.banner = banner
 
     self._input = None
 
   def to_text(self, code: str) -> str:
-    if isinstance(code, str):
-      return html_to_text(code)
+    return clean(code)
 
-    return code
-  
   def sanitize(self, code: str) -> str:
     return sanitize_html(code)
 
@@ -130,14 +127,16 @@ class Page:
     
     return Animate(el)
 
-  def _start_input_loop(self, console) -> PageResult:
+  def _start_input_loop(self, console, inject=None) -> PageResult:
+    el = inject or console
+    
     while True:
-      console.clear()
-      console.append(self.render())
+      el.clear()
+      el.append(self.render())
 
       input_ = input()
-      console.clear()
-  
+      el.clear()
+
       return PageResult(input_)
 
 # Options page
@@ -154,7 +153,7 @@ class OptionsPage(Page):
     super().__init__(title=title, banner=banner, back_button=back_button, close_button=close_button)
     self.options = options
     self.display_index = display_index
- 
+
   def render(self) -> Animate:
     options = []
 
@@ -166,8 +165,8 @@ class OptionsPage(Page):
 
     return self._render(f'<div class="flex-1 flex flex-col overflow-y-auto">{"".join(options)}</div>')
  
-  def display(self, console) -> PageResult:
-    return self._start_input_loop(console)
+  def display(self, console, inject=None) -> PageResult:
+    return self._start_input_loop(console, inject=inject)
 
 # Input Text Page
 class InputPage(Page):
@@ -252,19 +251,21 @@ class InputPage(Page):
   def render(self) -> Animate:
     return self._render(self.get_body())
 
-  def display(self, console) -> PageResult:
+  def display(self, console, inject=None) -> PageResult:
+    el = inject or console
+
     while True:
-      console.clear()
-      console.append(self.render())
+      el.clear()
+      el.append(self.render())
 
       self.error_text = None
-  
+
       result = PageResult(console.input(self.placeholder or "", autohide=self.autohide))
       if result.is_back or result.is_closed:
         return result
 
       if self.validate(result.get_input()) is not None:
-        console.clear()
+        el.clear()
         return result
 
 # Iframe Page
@@ -274,18 +275,18 @@ class IframePage(Page):
     self.url = url
   
   def render(self) -> Animate:
-    return self._render(f'''
-      <iframe class="flex-1" src="{self.to_text(self.url)}"></iframe>
-    ''')
+    return self._render(f'<iframe class="w-full h-full" src="{self.to_text(self.url)}"></iframe>')
 
-  def display(self, console) -> PageResult:
-    console.clear()
-    console.append(self.render())
+  def display(self, console, inject=None) -> PageResult:
+    el = inject or console
+
+    el.clear()
+    el.append(self.render())
     
     result = PageResult(input())
     
-    console.clear()
-    
+    el.clear()
+
     return result
 
 # Items Selection Page
@@ -311,9 +312,9 @@ class SelectionPage(Page):
   def get_header(self):
     if not self.title:
       return ""
-    
+
     return f"""
-      <h1 class="p-2 bg-pink-400/60 border-b border-pink-400/60 text-white text-center text-lg">{self.title}</h1>
+      <h1 class="p-2 bg-pink-400/60 border-b border-pink-400/60 text-white text-center text-lg">{self.to_text(self.title)}</h1>
     """
 
   def render_items(self) -> list[str]:
@@ -376,13 +377,15 @@ class SelectionPage(Page):
 
     return self._render(html)
 
-  def display(self, console) -> list[str]:
-    console.clear()
-    console.append(self.render())
+  def display(self, console, inject=None) -> list[str]:
+    el = inject or console
+    
+    el.clear()
+    el.append(self.render())
 
     input_data = input()
     
-    console.clear()
+    el.clear()
 
     if input_data == "__cancel__":
       return []
@@ -398,7 +401,7 @@ class FormPage(Page):
     super().__init__()
 
     self.uid = generate_uuid()
-    self.title = title
+    self.title: str | None = title
     self.fields: list[dict] = []
     self.values = {}
   
@@ -680,7 +683,7 @@ class FormPage(Page):
 
     return f"""
       <h1 class="p-2 bg-pink-400/60 border-b border-pink-400/60 text-white text-center text-lg">
-        {self.title}
+        {self.to_text(self.title)}
       </h1>
     """
   
@@ -700,12 +703,14 @@ class FormPage(Page):
     """ if info_val else ""
 
     return f"""
-      <div class="p-3 border-b border-white/20">
+      <div class="px-3 py-1">
         <label class="block text-white/80 text-sm mb-1 font-heading">
           {self.to_text(field["label"])}
-        </label>{body}{info}</div>
+        </label>
+        {body}{info}
+      </div>
     """
-  
+
   def render_input(self, field) -> str:
     extra_attrs = self.get_attrs(field)
 
@@ -721,7 +726,7 @@ class FormPage(Page):
         spellcheck="false"
         {extra_attrs}
         {"required" if field["required"] else ""}
-        class="w-full rounded bg-white/10 border border-white/20 px-3 py-2 text-white placeholder-white/40 outline-none focus:border-pink-400">
+        class="w-full rounded bg-white/10 border border-white/20 p-2 text-white placeholder-white/40 outline-none focus:border-pink-400">
     """)
 
   def render_textarea(self, field) -> str:
@@ -737,26 +742,25 @@ class FormPage(Page):
         placeholder="{self.to_text(field["placeholder"])}"
         {"required" if field["required"] else ""}
         {extra_attrs}
-        class="w-full min-h-32 resize-y rounded bg-white/10 border border-white/20 px-3 py-2 text-white placeholder-white/40 outline-none focus:border-pink-400">{self.to_text(field["value"])}</textarea>
+        class="w-full min-h-32 resize-y rounded bg-white/10 border border-white/20 p-2 text-white placeholder-white/40 outline-none focus:border-pink-400"
+        >{self.to_text(field["value"])}</textarea>
     """)
 
   def render_select(self, field) -> str:
     extra_attrs = self.get_attrs(field)
+    selected_value = field["value"]
 
     options = "".join(
       f"""
-      <option value="" disabled selected hidden>
-        Select...
-      </option>
-  
+      {'<option value="" disabled selected hidden>Select...</option>' if len(selected_value) <= 0 else ''}
       <option
         class="bg-zinc-900 text-white"
-        value="{value}"
-        {"selected" if value == field["value"] else ""}>
+        value="{self.to_text(value)}"
+        {"selected" if value == selected_value else ""}>
         {self.to_text(label)}
       </option>
       """
-      for label, value in field["options"].items()
+      for value, label in field["options"].items()
     )
 
     return self.render_element(field, f"""
@@ -764,7 +768,7 @@ class FormPage(Page):
         data-field="{field["name"]}"
         {"required" if field["required"] else ""}
         {extra_attrs}
-        class="w-full rounded bg-white/10 border border-white/20 px-3 py-2 text-white outline-none focus:border-pink-400">
+        class="w-full rounded bg-white/10 border border-white/20 p-2 text-white outline-none focus:border-pink-400">
         {options}
       </select>
     """)
@@ -773,7 +777,7 @@ class FormPage(Page):
     extra_attrs = self.get_attrs(field)
 
     return f"""
-      <div class="p-3 border-b border-white/20 bg-transparent">
+      <div class="p-2 px-3 bg-transparent">
         <label class="flex items-center gap-3 cursor-pointer text-white">
           <input
             data-field="{field['name']}"
@@ -788,19 +792,20 @@ class FormPage(Page):
 
   def render_color(self, field) -> str:
     extra_attrs = self.get_attrs(field)
+    value = self.to_text(field["value"])
 
     return self.render_element(field, f"""
       <input
         data-field="{field["name"]}"
         type="color"
-        value="{field["value"]}"
+        value="{value}"
         oninput="this.nextElementSibling.textContent=this.value"
         {"required" if field["required"] else ""}
         {extra_attrs}
         class="h-10 w-14 rounded border border-white/20 bg-transparent cursor-pointer">
 
       <span class="text-white/70 font-mono">
-        {field["value"]}
+        {value}
       </span>
     """)
 
@@ -868,13 +873,15 @@ class FormPage(Page):
 
     return self._render(html)
 
-  def display(self, console) -> dict[str, str]:
-    console.clear()
-    console.append(self.render())
+  def display(self, console, inject=None) -> dict[str, str]:
+    el = inject or console
+
+    el.clear()
+    el.append(self.render())
 
     result = input()
 
-    console.clear()
+    el.clear()
 
     if result == "__cancel__":
       return None
@@ -883,7 +890,6 @@ class FormPage(Page):
 
     self.values.update(result)
     return result
-
 
 # --------- No Interaction Pages
 
@@ -899,7 +905,7 @@ class LoadingPage:
     if self.label is None:
       return ""
 
-    return f'<h1 class="text-sm opacity-80">{html_to_text(self.label)}</h1>'
+    return f'<h1 class="text-sm opacity-80">{clean(str(self.label))}</h1>'
 
   def render(self) -> Animate:
     return Animate(Div(f"""
@@ -907,11 +913,13 @@ class LoadingPage:
       <h1>{self.render_label()}</h1>
     """).add_class("bg-black/60 flex-1 flex flex-col justify-center items-center overflow-hidden"))
 
-  def display(self, console):
-    console.clear()
-    console.append(self.render())
+  def display(self, console, inject=None):
+    el = inject or console
+    
+    el.clear()
+    el.append(self.render())
 
-    return lambda: console.clear()
+    return lambda: el.clear()
 
 # Animation Page
 class AnimationPage:
@@ -924,12 +932,14 @@ class AnimationPage:
       <pre>{sanitize_html(frame)}</pre>
     """).add_class("flex-1 flex flex-col justify-center items-center overflow-hidden"))
 
-  def display(self, console) -> None:
+  def display(self, console, inject=None) -> None:
+    el = inject or console
+
     for frame in self.frames:
-      console.clear()
-      console.append(self.render(frame))
+      el.clear()
+      el.append(self.render(frame))
     
       sleep(self.delay)
 
-    console.clear()
+    el.clear()
 

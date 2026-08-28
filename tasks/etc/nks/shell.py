@@ -1,6 +1,9 @@
+import flx.loading.hearts
+
 import os
 import json
 from subprocess import PIPE
+
 from flx import js, panel
 from flx.lib.process import sh
 
@@ -18,6 +21,7 @@ Long-running programs may not work.
 
 """
 
+js.clear_panel(True)
 
 js.set_config("block-user-clear", False)
 js.set_config("block-user-input", False)

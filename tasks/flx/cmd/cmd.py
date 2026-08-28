@@ -2,7 +2,7 @@ import shlex
 import inspect
 
 from pydantic import BaseModel
-from typing import Literal, Optional, Any
+from typing import Literal, Any
 
 from flx.js import set_config
 from flx.lib.process import sh
@@ -17,13 +17,13 @@ DATA_TYPE = Literal['str', 'int', 'yon']
 # Options Model
 class OptionModel(BaseModel):
   type: DATA_TYPE = "str"
-  value: Optional[Any] = None
+  value: None | Any = None
 
   required: bool = True
 
   # Shared validation
-  min: Optional[int] = None
-  max: Optional[int] = None
+  min: int | None = None
+  max: int | None = None
 
 # Options
 class CommandOptions:

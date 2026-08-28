@@ -1,3 +1,5 @@
+import flx.loading.hearts
+
 import json
 import subprocess
 
@@ -152,7 +154,7 @@ def build_nmap_command(data: dict) -> str:
 
 
 console = Console()
-console.panel.replace(code)
+console.replace(code)
 
 payload = json.loads(input().strip())
 command = build_nmap_command(payload)

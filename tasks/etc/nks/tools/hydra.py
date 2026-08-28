@@ -1,15 +1,16 @@
-# Hydra 
+import flx.loading.hearts
+
 import os
 import pty
 import subprocess
 
 from flx import js
 from flx import panel
-from flx.console import SConsole
+from flx.console import Console
 from flx.console.page import OptionsPage, FormPage
 
 
-console = SConsole()
+console = Console()
 
 BANNER = r"""
         ,     \    /      ,        

@@ -1,26 +1,27 @@
 import os
 from pathlib import Path
 
+from flx import panel
 from flx.app import JApp
 from flx.ui import Div, Animate
 from flx.lib.utils import clean
 
-from flx import panel
+from flx.path import HOME_PATH
 
-from typing import List, Any
 
 class FileSystem(JApp):
-  def init(self, directory, multiple, accept="*", title: str | None = None):
-    self.start_path = Path(os.environ.get("KIKX_HOME_PATH", ""))
-    self.current_path = self.start_path
+  def init(self, path: str | None, directory: bool, multiple: bool, accept: str = "*", title: str | None = None):
+    self.start_path: Path = HOME_PATH / (path or "")
+    self.current_path: Path = self.start_path
 
-    self.directory = directory
-    self.multiple = multiple
-    self.selected = list()
-    
-    self.list_view = True
-  
-    self.close_flag = False
+    self.accept: str = accept
+
+    self.directory: bool = directory
+    self.multiple: bool = multiple
+    self.selected: list = []
+
+    self.list_view: bool = True
+    self.close_flag: bool = False
 
     title_head = "Open "
     if self.directory:
@@ -30,13 +31,13 @@ class FileSystem(JApp):
     else:
       title_head += "File"
     
-    title_head = title or title_head
+    title_head: str = title or title_head
 
     self.frame = Animate(Div(f"""
       <div class="p-2 bg-blue-400/80 flex justify-between items-center">
         <div class="flex flex-col w-full">
           <div class="w-full flex justify-between items-center">
-            <div class="text-lg">{title_head}</div>
+            <div class="text-lg">{self.clean(title_head)}</div>
             <div {self.on("close")}>
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12z"/></svg>
             </div>
@@ -44,25 +45,32 @@ class FileSystem(JApp):
         </div>
       </div>
     """)).add_class("absolute w-full h-full insert-0 flex flex-col bg-slate-800")
-    
+
     self.files_div = Div().add_class("flex-1 flex flex-col overflow-hidden")
     self.frame.append(self.files_div)
     
     self.selected_class_style = ""
   
-  def clean(self, text):
-    if isinstance(text, str):
-      return clean(text)
+  def clean(self, text) -> str:
+    return clean(str(text))
 
-    return text
-
-  def get_icon(self, path):
+  def get_icon(self, path: Path) -> str:
     if path.is_dir():
       return "/public/app/com.kikx.florix/icons/folder.png"
     else:
       return "/public/app/com.kikx.florix/icons/file.png"
+    
+  def get_path_files(self, path: Path) -> list[Path]:
+    path_list = path.iterdir()
 
-  def display_path(self, path):
+    if self.accept == "*":
+      return path_list
+    
+    accept_list = self.accept.split(",")
+
+    return [p for p in path_list if p.is_dir() or p.suffix in accept_list]
+
+  def display_path(self, path: str | Path) -> None:
     self.current_path = Path(path)
 
     def get_div(file_path: Path):
@@ -89,6 +97,8 @@ class FileSystem(JApp):
     
     select_button = f'<div {self.on("done")} class="p-2 bg-blue-400/60 text-center">SELECT</div>'
 
+    files = [get_div(path / name) for name in self.get_path_files(self.current_path)]
+
     self.files_div.replace(f"""
       { select_button if self.directory or (len(self.selected) > 0 and self.multiple) else ''}
       <div class="flex gap-1 p-2 px-2 shadow-2xl">
@@ -106,11 +116,11 @@ class FileSystem(JApp):
         </div>
       </div>
       <div class="overflow-y-auto {cls_list}">
-        {''.join([get_div(path / name) for name in os.listdir(path)])}
+        {''.join(files)}
       </div>
     """)
   
-  def on_select(self, file_path):
+  def on_select(self, file_path: str | Path):
     path = Path(file_path)
     if path.is_dir():
       return self.display_path(path)
@@ -127,24 +137,24 @@ class FileSystem(JApp):
 
     self.display_path(self.current_path)
 
-  def on_home(self):
+  def on_home(self) -> None:
     self.display_path(self.start_path)
   
-  def on_back(self):
+  def on_back(self) -> None:
     self.display_path(self.current_path.parent)
 
-  def on_toggle_view(self):
+  def on_toggle_view(self) -> None:
     self.list_view = not self.list_view
     self.display_path(self.current_path)
   
-  def on_done(self):
+  def on_done(self) -> bool:
     return True
 
-  def on_close(self):
+  def on_close(self) -> bool:
     self.close_flag = True
     return True
 
-  def show(self) -> List[Path]:
+  def show(self) -> list[Path] | None:
     panel.append(self.frame)
     self.display_path(self.start_path)
 
@@ -158,11 +168,11 @@ class FileSystem(JApp):
     return [self.current_path] if self.directory else self.selected
 
 class FSWrapper:
-  def ask_file(self, title: str | None = None, accept="*") -> List[Path] | None:
-    return FileSystem(False, False, accept, title=title).show()
+  def ask_file(self, path=None, title: str | None = None, accept="*") -> list[Path] | None:
+    return FileSystem(path, False, False, accept, title=title).show()
 
-  def ask_files(self, title: str | None = None, accept="*") -> List[Path] | None:
-    return FileSystem(False, True, accept, title=title).show()
+  def ask_files(self, path=None, title: str | None = None, accept="*") -> list[Path] | None:
+    return FileSystem(path, False, True, accept, title=title).show()
 
-  def ask_directory(self, title: str | None = None, accept="*") -> List[Path] | None:
-    return FileSystem(True, False, accept, title=title).show()
+  def ask_directory(self, path=None, title: str | None = None, accept="*") -> list[Path] | None:
+    return FileSystem(path, True, False, accept, title=title).show()

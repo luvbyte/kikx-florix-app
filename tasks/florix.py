@@ -1,6 +1,4 @@
-from flx.console import SConsole
+from flx.console import Console
 
 
-console = SConsole()
-
-console.print("Florix under development")
+console = Console()

@@ -3,11 +3,8 @@ from pathlib import Path
 from flx import panel
 
 from flx.app import JApp
-from flx.ui import Div, Text, Animate
 from flx.lib.utils import clean
-
-from typing import List
-
+from flx.ui import Div, Text, Animate
 
 
 class Alert(Div):
@@ -31,19 +28,19 @@ class Alert(Div):
     self.add_class("absolute w-full h-full inset-0 flex items-center justify-center overflow-hidden")
 
     self.body = Div(f"""
-        <!-- Header -->
-        { f'<div class="text-sm text-center p-2 font-semibold rounded-t-lg tracking-widest border-b border-white/30">{clean(title)}</div>' if title else '' }
-        <!-- Body -->
-        <div class="flex-1 {"min-h-[100px]" if not confirm else ""} p-4 text-sm font-mono tracking-wide">
-          {clean(message)}
+      <!-- Header -->
+      { f'<div class="text-sm text-center p-2 font-semibold rounded-t-lg tracking-widest border-b border-white/30">{clean(title)}</div>' if title else '' }
+      <!-- Body -->
+      <div class="flex-1 break-all {"min-h-[100px]" if not confirm else ""} p-4 text-sm font-mono tracking-wide">
+        {clean(str(message))}
+      </div>
+        <!-- Buttons (if confirm dialog) -->
+        {'''
+        <div class="flex p-4 justify-end gap-2">
+          <button onclick="sendInput('yes')" class="px-4 py-1 text-white rounded bg-green-600/80 active:scale-110 transition">Yes</button>
+          <button onclick="sendInput('no')" class="px-4 py-1 text-white rounded bg-red-600/80 active:scale-110 transition">No</button>
         </div>
-          <!-- Buttons (if confirm dialog) -->
-          {'''
-          <div class="flex p-4 justify-end gap-2">
-            <button onclick="sendInput('yes')" class="px-4 py-1 text-white rounded bg-green-600/80 active:scale-110 transition">Yes</button>
-            <button onclick="sendInput('no')" class="px-4 py-1 text-white rounded bg-red-600/80 active:scale-110 transition">No</button>
-          </div>
-          ''' if confirm else ''}
+        ''' if confirm else ''}
     """).add_class('w-4/5 flex flex-col h-auto bg-gradient-to-rb transition-all duration-500').add_class(styles.get(atype, styles["info"]))
     
     self.on("injected", self.on_injected)
@@ -56,7 +53,7 @@ class Alert(Div):
 
   def show(self):
     panel.append(self)
-    
+
     while True:
       result = input().strip()
       if result == "..." and self.confirm:

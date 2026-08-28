@@ -60,10 +60,10 @@ class JS:
     self.jfunc("remove()")
 
   def scroll_to_bottom(self) -> None:
-    js.run_code(f"scrollToBottom('#{self.id}')")
+    js.scroll_to_bottom(f"#{self.id}")
 
   def scroll_to_top(self) -> None:
-    js.run_code(f"scrollToTop('#{self.id}')")
+    js.scroll_to_top(f"#{self.id}")
 
 class ElementProp:
   def __init__(self, func: Callable[[Union[str, Callable[[], str]]], None]):

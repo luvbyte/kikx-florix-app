@@ -613,9 +613,12 @@
     constructor(app) {
       super(app, "os");
     }
-    // Run function in os service
+    // { data, error } result
     func = (name, { args = [], options = {} }) =>
       this.request("run", "POST", { name, args, options });
+    // Output / Error result
+    exec = (name, { args = [], options = {} }) =>
+      this.fetch("run", "POST", { name, args, options });
   }
 
   class MicroService extends Service {
@@ -682,6 +685,62 @@
     }
   }
 
+  // Alert
+  class Alert {
+    constructor(app) {
+      this.app = app;
+      this.uid = generateUUID();
+
+      this._sticky = false;
+      this._silent = false;
+      this._priority = "normal";
+      this._label = null;
+      this._extra = {};
+    }
+    setSticky(v = true) {
+      this._sticky = Boolean(v);
+      return this;
+    }
+    setSilent(v = true) {
+      this._silent = Boolean(v);
+      return this;
+    }
+    setPriority(v = "normal") {
+      if (!["less", "normal", "high"].includes(v)) {
+        throw new Error(`Invalid priority option: ${v}`);
+      }
+      this._priority = v;
+      return this;
+    }
+    setExtra(k, v) {
+      this._extra[k] = v;
+      return this;
+    }
+    setIsCode(v = true) {
+      this.setExtra("isCode", Boolean(v));
+      return this;
+    }
+    setLabel(label = null) {
+      this._label = label;
+      return this;
+    }
+    show(message, type = "info") {
+      return this.app.system._alert({
+        type,
+        message,
+        uid: this.uid,
+        label: this._label,
+        extra: this._extra,
+        silent: this._silent,
+        sticky: this._sticky,
+        priority: this._priority
+      });
+    }
+    hide() {
+      return this.show("");
+    }
+  }
+
   class SystemService extends Service {
     constructor(app) {
       super(app, "system");
@@ -695,8 +754,16 @@
     // Close Sessions
     closeSession = sessionID =>
       this.request(`info/session/close/${sessionID}`, "POST");
-    // notify
-    alert = payload => this.fetch("alert", "POST", payload);
+    // Alert
+    _alert = payload => this.fetch("alert", "POST", payload);
+    // Alert Message
+    alert = (message, { type = "info", priority = "normal" } = {}) => {
+      return this._alert({ message, type, priority });
+    };
+    // Create alert instance
+    createAlert() {
+      return new Alert(this.app);
+    }
     // App function x
     appFunc = (name, config) =>
       this.request("app/func", "POST", { name, config });
@@ -716,6 +783,17 @@
     constructor(config = {}) {
       this.config = new KikxConfig(config);
       this.system = new SystemService(this);
+
+      this.messageEventHandlers = new Map();
+
+      window.addEventListener("message", ({ data }) => {
+        const { event, payload } = data ?? {};
+        if (!event) return;
+
+        this.messageEventHandlers
+          .get(event)
+          ?.forEach(callback => callback(payload));
+      });
     }
 
     async run(callback = null) {
@@ -750,6 +828,37 @@
     func(name, options) {
       return this.system.appFunc(name, options);
     }
+
+    // UI post message events
+    onMessage(event, callback) {
+      if (!this.messageEventHandlers.has(event)) {
+        this.messageEventHandlers.set(event, new Set());
+      }
+
+      this.messageEventHandlers.get(event).add(callback);
+
+      return () => this.offMessage(event, callback);
+    }
+
+    offMessage(event, callback) {
+      const callbacks = this.messageEventHandlers.get(event);
+      if (!callbacks) return;
+
+      callbacks.delete(callback);
+
+      if (callbacks.size === 0) {
+        this.messageEventHandlers.delete(event);
+      }
+    }
+
+    onceMessage(event, callback) {
+      const wrapper = payload => {
+        this.offMessage(event, wrapper);
+        callback(payload);
+      };
+
+      return this.onMessage(event, wrapper);
+    }
   }
 
   // Client App
@@ -781,31 +890,25 @@
           ?._ondata_callbacks?.forEach(fn => fn(payload.data));
       });
 
-      // Send event to kikx -> app
+      // visibilitychange
       document.addEventListener("visibilitychange", () => {
         if (document.visibilityState !== "visible") return;
 
         if (!this.hasSocketState(WebSocket.OPEN)) {
           this._forceReconnect();
-          return;
         }
-
-        this.sendEvent("app:focus");
+        //
+        try {
+          this.ws.send(JSON.stringify({ event: "app-ping", payload: {} }));
+        } catch (_) {}
       });
-      //if (typeof document !== "undefined") {
-      // document.addEventListener("visibilitychange", () => {
-      //   if (!this.ws) return;
-      //   try {
-      //     if (document.visibilityState === "visible") {
-      //       this.sendEvent("app:focus");
-      //     } else if (document.visibilityState === "hidden") {
-      //       this.sendEvent("app:blur");
-      //     }
-      //   } catch (_) {}
-      // });
-      //}
-    }
 
+      this.onMessage("CHECK_WS", () => {
+        if (!this.hasSocketState(WebSocket.OPEN)) {
+          this._forceReconnect();
+        }
+      });
+    }
 
     // Create app handler
     createHandler() {
@@ -819,12 +922,6 @@
       this.appEventHandlers.delete(handlerID);
     }
 
-    // Reconnect
-    // _forceReconnect(reason = "manual trigger") {
-    //   this._clearReconnectTimer();
-    //   this.reconnectAttempts = 0;
-    //   this._connect();
-    // }
     _forceReconnect() {
       this._clearReconnectTimer();
       this.reconnectAttempts = 0;
@@ -846,7 +943,6 @@
       if (this.hasSocketState(WebSocket.CONNECTING, WebSocket.OPEN)) {
         return;
       }
-      // if (this.ws) return;
 
       const url = `${this.getWsUrl()}/app/${this.getAppID()}`;
       this.ws = new WebSocket(url);
@@ -892,14 +988,6 @@
           this.ws.close();
         }
       };
-
-      // this.ws.onerror = e => {
-      //   this._callEvent("ws:onerror", e);
-      //   if (this.ws) {
-      //     this.ws.close();
-      //     this.ws = null;
-      //   }
-      // };
     }
 
     _scheduleReconnect() {
@@ -963,10 +1051,6 @@
           console.error(err);
         }
       }
-
-      // if (this.eventCallbacks[event]) {
-      //   this.eventCallbacks[event].forEach(fn => fn(data));
-      // }
     }
 
     // Send Json data to app using ws
@@ -979,17 +1063,6 @@
     sendEvent(event, payload = null) {
       this.send({ event, payload });
     }
-
-    // Run and connect ws
-    // async run(callback = null) {
-    //   if (this.ws && this.ws.readyState < WebSocket.CLOSING) return;
-
-    //   if (typeof callback === "function") {
-    //     this.on("connected", callback);
-    //   }
-
-    //   this._connect();
-    // }
     async run(callback = null) {
       if (typeof callback === "function") {
         this.once("connected", callback);

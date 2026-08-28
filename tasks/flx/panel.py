@@ -1,7 +1,7 @@
 from . import js
 
-from .ui import render, Element, Template 
 from .ui.base import recursive_emit
+from .ui import render, Element, Template 
 
 
 def inject(el):
@@ -21,6 +21,4 @@ def text(el):
   js.text("#panel", el)
 
 def clear(force=False):
-  force = "true" if force else "false"
-  js.run_code(f"clearPanel({force})")
-
+  js.clear_panel(force=force)

@@ -2,52 +2,47 @@ import re
 import json
 import difflib
 from time import sleep
-from pathlib import Path
-from datetime import datetime
+
+from typing import Any
 
 from flx import panel, js
-from flx.ui import Div, Text, Animate, Pre
 from flx.ui.helpers import ClassBuilder
+from flx.ui import Div, Animate, Pre
+from flx.lib.utils import clean, escape, bclean, get_item, sanitize_html
 
-from flx.lib.utils import clean, escape, get_item, sanitize_html
 from flx.widgets.fs import FSWrapper
 from flx.widgets.dialogue import AlertWrapper
 
 
-
-# super Console with more features
 # Themes: default, neon, matrix, scifi, solarized
-class SConsole:
+class Console:
   def __init__(self, font_size: int = 14, theme: str = "default", padding=None, auto_scroll=True):
     panel.clear()
+
     self.font_size = font_size
     self.padding = padding
 
     self._box = Div()
-    self._history = []
     self.set_theme(theme)
 
     self.auto_scroll = auto_scroll
 
     panel.inject(self.box)
 
-  def init(self):
-    pass
-
   @property
   def box(self):
     return self._box
-  
-  def clean(self, *args, **kwargs):
+
+  def clean(self, *args, **kwargs) -> str:
     return clean(*args, **kwargs)
-  
-  def sanitize(self, html_content):
+
+  def sanitize(self, html_content) -> str:
     return sanitize_html(html_content)
   
-  def set_theme(self, theme_name: str):
-    """
-    Apply a theme by name using the ConsoleThemes registry.
-    """
+  def escape(self, *args, **kwargs) -> str:
+    return escape(*args, **kwargs)
+
+  def set_theme(self, theme_name: str) -> None:
     theme = ConsoleThemes.THEMES.get(theme_name)
     if not theme:
       raise Exception(f"Unknown theme: '{theme_name}'")
@@ -70,19 +65,19 @@ class SConsole:
     self.box.add_class(*filter(None, base_classes))
     self.active_theme = theme
   
-  def set_theme_class(self, text):
+  def set_theme_class(self, text: str) -> str:
     self.box.cls.clear()
     self.box.add_class(text)
-  
-  def append(self, el, auto_scroll=False):
+
+  def append(self, el, auto_scroll: bool = False) -> None:
     self.box.append(el)
     if self.auto_scroll or auto_scroll:
       self.scroll_to_bottom()
 
-  def replace(self, el):
+  def replace(self, el) -> None:
     self.box.replace(el)
 
-  def _parse_markup(self, text):
+  def _parse_markup(self, text: str):
     def replacer(match):
       color = match.group(1).lower()
       content = match.group(2)
@@ -94,7 +89,7 @@ class SConsole:
   def color_box(self, text: str, color: str = "gray", effect="fadeIn"):
     div = Div(f"""
       <div class="bg-{color}-400/60 border-b border-{color}-300/60 p-2 text-{color}-100 shadow-sm">
-        {clean(str(text))}
+        {clean(text)}
       </div>
     """)
 
@@ -102,9 +97,9 @@ class SConsole:
 
   def print(self, *lines, size=None, center=False, padding=None, dom_purify=True, bg=None, fg=None, class_list="", auto_scroll=False, effect=None):
     div = Div(*[
-        f"<p>{self._parse_markup(clean(str(line))) if dom_purify else self._parse_markup(self.sanitize(line))}</p>"
+        f"<p>{self._parse_markup(clean(line)) if dom_purify else self._parse_markup(self.sanitize(line))}</p>"
         for line in lines
-      ]).add_class("w-full flex gap-x-1").add_class(
+      ]).add_class("w-full flex gap-x-1 break-all").add_class(
         ClassBuilder()
         .add_if(f"p-{padding}", padding)
         .add_if(f"text-[{size}px]", size)
@@ -133,15 +128,12 @@ class SConsole:
     )
     sleep(wait)
     return el
-  
-  def input(self, label: str = "", autohide: bool = True, focus: bool = False, effect: str = "lightSpeedInLeft") -> str:
+
+  def input(self, label: str = "", autohide: bool = True, focus: bool = False, effect: str = "slideInUp") -> str:
     js.set_config("block-user-input", False)
     result = js.ask_input(label, autohide=autohide, focus=focus, effect=effect)
     js.set_config("block-user-input", True)
     return result
-
-  def log(self, message):
-    self.print(ConsoleLogger.format_log(message))
 
   def print_error(self, message, *args, **kwargs):
     self.print(f"[red][ERROR][/red] {message}", *args, **kwargs)
@@ -149,50 +141,42 @@ class SConsole:
   def print_success(self, message, *args, **kwargs):
     self.print(f"[green][OK][/green] {message}", *args, **kwargs)
 
-  def print_json(self, obj):
+  def print_json(self, obj: dict):
     self.print(ConsoleHelpers.format_json(obj), dom_purify=False)
 
-  def wait(self, seconds):
+  def wait(self, seconds: float) -> None:
     sleep(seconds)
 
-  def hr(self):
+  def hr(self) -> None:
     self.box.append('<div class="w-full bg-white min-h-[1px]"></div>')
     self.scroll_to_bottom()
   
-  def br(self, times=1):
+  def br(self, times: int = 1) -> None:
     self.append(Div("<br>" * times))
 
-  def clear(self):
+  def clear(self) -> None:
     self.box.clear()
 
   @property
-  def fs(self):
+  def fs(self) -> FSWrapper:
     return FSWrapper()
 
   @property
-  def alert(self):
+  def alert(self) -> AlertWrapper:
     return AlertWrapper()
 
   @property
-  def wg(self):
+  def wg(self) -> 'ConsoleWidgets':
     return ConsoleWidgets(self)
 
-  def render(self):
+  def render(self) -> None:
     panel.inject(self.box)
   
-  def scroll_to_bottom(self):
+  def scroll_to_bottom(self) -> None:
     self.box.scroll_to_bottom()
 
-  def history(self, limit=20):
-    return self._history[-limit:]
-  
-  def notify(self, message, type='info', priority = "normal"):
-    data = json.dumps({
-      "type": type,
-      "message": message,
-      "priority": priority
-    })
-    js.run_code(f"kikxApp.system.alert({data})")
+  def notify(self, message, type: str = 'info', priority: str = "normal") -> None:
+    js.notify(message, type=type, priority=priority)
 
 class ConsoleThemes:
   THEMES = {
@@ -234,16 +218,10 @@ class ConsoleThemes:
     },
   }
 
-class ConsoleLogger:
-  """Logging utilities."""
-  @staticmethod
-  def format_log(message):
-    return f'{datetime.now().strftime("[%H:%M:%S]")} {message}'
-
 class ConsoleHelpers:
   """Visual and formatting helpers."""
   @staticmethod
-  def format_json(obj):
+  def format_json(obj: dict):
     return f'<pre class="text-xs whitespace-pre-wrap">{json.dumps(obj, indent=2)}</pre>'
 
 class ConsoleWidgets:
@@ -251,23 +229,33 @@ class ConsoleWidgets:
     self.console = console
     self.print = self.console.print
   
-  def panel(self, message: str, title: str="", type='info', collapsible=False, open_by_default=True):
+  def panel(
+    self,
+    message: str,
+    title: str = "",
+    type: str = 'info',
+    collapsible: bool = False,
+    open_by_default: bool = True
+  ) -> None:
+    title = clean(title)
+    message = clean(message)
+
     color_map = {
       'info':    ('bg-blue-500/20', 'text-blue-200'),
       'success': ('bg-green-500/20', 'text-green-200'),
       'warning': ('bg-yellow-500/20', 'text-yellow-200'),
       'error':   ('bg-red-500/20', 'text-red-200'),
     }
-  
+
     bg_class, text_class = color_map.get(type, (f'bg-{type}/20', f'text-{type}-200'))
   
     # Begin panel content
-    header_html = f'<div class="font-bold text-lg">{clean(title)}</div>'
-    message_html = f'<div class="whitespace-pre-wrap">{clean(str(message))}</div>'
-  
+    header_html = f'<div class="font-bold text-lg">{title}</div>'
+    message_html = f'<div class="whitespace-pre-wrap break-all">{message}</div>'
+
     self.console.append(f'''
       <details {"open" if open_by_default else ""} class="p-2 {bg_class} {text_class} border-l-4 border-white/20 shadow-sm group">
-        <summary class="py-2 cursor-pointer font-semibold text-white/90">{clean(title)}</summary>
+        <summary class="py-2 cursor-pointer font-semibold text-white/90">{title}</summary>
         <div>{message_html}</div>
       </details>
       ''' if collapsible else f'''
@@ -277,125 +265,130 @@ class ConsoleWidgets:
       </div>
     ''')
 
-  def table(self, data, headers=None, border=True, striped=True, size='sm', align="left"):
-    if not data:
+  def table(
+    self,
+    rows: list[list[Any]],
+    columns: list[str],
+    border: bool = True,
+    striped: bool = True,
+    size: str = 'sm',
+    align: str = "left"
+  ) -> None:
+    if not rows:
       self.print("[yellow]No data to display.[/yellow]")
       return
-  
-    is_dicts = isinstance(data[0], dict)
-    if is_dicts and headers is None:
-      headers = list(data[0].keys())
-  
+
     table_classes = [
       "table-auto",
       f"text-{size}",
       "w-full",
       "border-separate",
-      "border-spacing-y-1"
+      "border-spacing-x-0.5"
     ]
-  
+
     align_class = {
       "left": "text-left",
       "center": "text-center",
       "right": "text-right"
     }.get(align, "text-left")
-  
-    html = [f'<div class="overflow-x-auto"><table class="{" ".join(table_classes)}">']
-  
+
+    html = [
+      f'<div class="overflow-x-auto"><table class="{" ".join(table_classes)}">'
+    ]
+
     # Header
     html.append("<thead>")
     html.append(f'<tr class="bg-black/30 text-white/80 {align_class}">')
-    for header in headers:
-      html.append(f'<th class="px-4 py-2 rounded-t-md whitespace-nowrap">{clean(str(header))}</th>')
+
+    for column in columns:
+      html.append(
+        f'<th class="p-2 whitespace-nowrap">'
+        f'{clean(column)}</th>'
+      )
+
     html.append("</tr></thead>")
-  
+
     # Body
     html.append("<tbody>")
-    for i, row in enumerate(data):
+
+    for i, row in enumerate(rows):
       row_bg = "bg-black/10" if striped and i % 2 else "bg-black/5"
-      html.append(f'<tr class="{row_bg} text-white/70 hover:bg-black/20 transition {align_class}">')
-  
-      cells = row.values() if is_dicts else row
-      for cell in cells:
-        safe_html = clean(str(cell), tags=["span", "i", "b", "img"])
-        html.append(f'<td class="px-4 py-2 whitespace-nowrap">{safe_html}</td>')
-  
+
+      html.append(
+        f'<tr class="{row_bg} text-white/70 '
+        f'hover:bg-black/20 transition {align_class}">'
+      )
+
+      for cell in row:
+        safe_html = bclean(
+          str(cell),
+          tags=["span", "i", "b", "img"]
+        )
+
+        html.append(
+          f'<td class="p-2 whitespace-nowrap">'
+          f'{safe_html}</td>'
+        )
+
       html.append("</tr>")
+
     html.append("</tbody></table></div>")
-  
+
     self.console.append("".join(html))
 
-  def code_block(self, code: str, language=""):
-    html = f'''
-      <pre class="bg-black/30 text-white/80 text-xs font-mono py-3 overflow-auto whitespace-pre-wrap">
-        <code class="language-{language}">{clean(code)}</code>
-      </pre>
-    '''
+  def code_block(self, code: str, language: str = ""):
+    code = clean(code)
+    language = clean(language)
+
+    html = f'<pre class="bg-black/30 text-white/80 text-xs font-mono p-2 overflow-auto whitespace-pre-wrap"><code class="language-{language}">{code}</code></pre>'
     self.console.append(html)
 
   def copy_box(self, preview: str, copy_text: str):
-    escaped_copy = escape(copy_text).replace("'", "\\'")
+    escaped_copy = escape(str(copy_text)).replace("'", "\\'")
     escaped_preview = clean(preview)
-  
+
     html = f'''
-      <div class="relative bg-white/5 text-white/80 rounded p-3 text-sm font-mono border border-white/10 shadow-sm">
+      <div class="relative bg-white/5 text-white/80 rounded p-2 text-sm font-mono border border-white/10 shadow-sm">
         <!-- Clickable Preview Title -->
         <div class="cursor-pointer flex items-center justify-between gap-2"
-             onclick="
-              const btn = this.querySelector('span');
-              navigator.clipboard.writeText('{escaped_copy}').then(() => {{
-                btn.innerText = '✅ Copied!';
-                btn.classList.add('text-green-400');
-                setTimeout(() => {{
-                  btn.innerText = '📋 Copy';
-                  btn.classList.remove('text-green-400');
-                }}, 1500);
-              }});
-            ">
-          <div class="truncate">{escaped_preview}</div>
+           onclick="
+            const btn = this.querySelector('span');
+            navigator.clipboard.writeText('{escaped_copy}').then(() => {{
+              btn.innerText = 'Copied!';
+              btn.classList.add('text-green-400');
+              setTimeout(() => {{
+                btn.innerText = 'Copy';
+                btn.classList.remove('text-green-400');
+              }}, 1500);
+            }});
+          ">
+          <div class="overflow-x-auto text-nowrap">{escaped_preview}</div>
           <span class="text-xs px-2 py-1 bg-white/10 hover:bg-white/20 rounded font-semibold transition">
-            📋 Copy
+            Copy
           </span>
         </div>
       </div>
     '''
   
     self.console.append(html)
-  
-  def stat_box(title: str, value: str, icon: str = "📊", color="blue-500"):
-    return f'''
-    <div class="bg-{color}/10 border-l-4 border-{color} p-3 rounded shadow text-white/80">
-      <div class="text-sm">{icon} {title}</div>
-      <div class="text-2xl font-bold mt-1">{value}</div>
-    </div>
-    '''
 
-  def info_card(self, title: str, lines: list[str], icon="", bg="bg-slate-800/60"):
-    content = "<br>".join([clean(line) for line in lines])
+  def mini_table(self, data: dict, color: str = "white/60") -> None:
+    rows = "".join([
+      f'<div class="flex justify-between py-2 border-b border-white/5 text-{color}">'
+      f'<span class="font-semibold">{clean(k)}</span><span>{clean(v)}</span></div>'
+      for k, v in data.items()
+    ])
+    self.console.append(f'<div class="px-2">{rows}</div>')
+
+  def quote_box(self, message: str, author: str = "", color: str = "purple-300") -> None:
     self.console.append(f'''
-      <div class="{bg} border border-white/10 rounded py-4 px-2 shadow text-white/80">
-        <div class="text-lg font-bold">{icon} {clean(title)}</div>
-        <div class="text-sm whitespace-pre-wrap">{content}</div>
+      <div class="italic text-{color} bg-white/5 p-2 rounded border-l-4 border-{color} break-words">
+        “{clean(message)}”
+        {f'<div class="text-sm text-right mt-2">— {clean(author)}</div>' if author else ""}
       </div>
     ''')
 
-  def mini_table(self, data: dict, color="white/60"):
-    rows = "".join([
-      f'<div class="flex justify-between py-1 border-b border-white/5 text-{color}">'
-      f'<span class="font-semibold">{clean(str(k))}</span><span>{clean(str(v))}</span></div>'
-      for k, v in data.items()
-    ])
-    self.console.append(f'<div class="my-2 px-3">{rows}</div>')
-
-  def quote_box(self, message: str, author: str = "", color="purple-300"):
-    self.console.append(f'''
-    <div class="italic text-{color} bg-white/5 p-4 rounded border-l-4 border-{color} my-2">
-      “{clean(message)}”
-      {f'<div class="text-sm text-right mt-2">— {clean(author)}</div>' if author else ""}
-    </div>
-    ''')
-
-  def diff(self, old, new, context_lines=3):
+  def diff(self, old: str, new: str, context_lines: int = 3) -> None:
     if not isinstance(old, str): 
       old = str(old)
     if not isinstance(new, str): 
@@ -422,115 +415,4 @@ class ConsoleWidgets:
         html_lines.append(f'<div class="text-white/70">{clean(line)}</div>')
   
     self.console.append("".join(html_lines))
-  
 
-# basic console for simple scripts
-class Console:
-  def __init__(self):
-    panel.clear()
-    self._panel = Div()
-    self._panel.add_class(
-      "w-full h-full bg-gray-600/40 text-white text-sm overflow-auto relative"
-    )
-    panel.inject(self._panel)
-
-  @property
-  def panel(self) -> Div:
-    return self._panel
-
-  def append(self, code) -> 'Console':
-    self.panel.append(code)
-
-    return self
-
-  def clear(self) -> 'Console':
-    self.panel.empty()
-    
-    return self
-
-  def print(
-    self, 
-    text: str, 
-    center: bool = False, 
-    effect: str = None, 
-    color: str = "white", 
-    bg: str = "transparent", 
-    size: str = "[1rem]"
-  ) -> Text:
-    el = Text(text, size=size)
-    class_list = [f"text-{color}", f"bg-{bg}", f"text-[{size}]"]
-    if center:
-      class_list.append("text-center")
-    if effect:
-      el = Animate(el, effect=effect)
-    el.add_class(*class_list)
-    self.append(el)
-    self.scroll_to_bottom()
-
-    return el
-
-  def pre(
-    self, 
-    text: str, 
-    height: str = "auto", 
-    justify: str = "start", 
-    align: str = "start", 
-    text_align: str = "start", 
-    effect: str = None
-  ) -> Pre:
-    el = Pre(text)
-    el.add_style("height", height)
-    el.add_class(
-      "text-xs", "flex", f"justify-{justify}", f"items-{align}", f"text-{text_align}"
-    )
-    if effect:
-      el = Animate(el, effect)
-    self.append(el)
-    
-    return el
-
-  def pre_center(
-    self, 
-    text: str, 
-    text_align: str = "start", 
-    effect: str = None, 
-    wait: int = 1
-  ) -> Pre:
-    self.clear()
-    el = self.pre(
-      text, height="100%", justify="center", align="center", text_align=text_align, effect=effect
-    )
-    sleep(wait)
-    return el
-
-  def render_frames(self, frames: str) -> None:
-    collector = []
-    for line in frames.split("\n"):
-      split_line = line.split()
-      if line.startswith("!-!"):
-        self.pre_center(
-          "\n".join(collector), 
-          effect=get_item(split_line, 2, "fadeIn"),
-          wait=int(get_item(split_line, 1, 1))
-        )
-        collector.clear()
-      else:
-        collector.append(line)
-
-  def input(
-    self, 
-    label: str = "", 
-    autohide: bool = True, 
-    focus: bool = False, 
-    effect: str = "lightSpeedInLeft"
-  ) -> str:
-    js.set_config("block-user-input", False)
-    result = js.ask_input(label, autohide=autohide, focus=focus, effect=effect)
-    js.set_config("block-user-input", True)
-    return result
-
-  def br(self) -> None:
-    self.append("<br>")
-
-  def scroll_to_bottom(self) -> None:
-    self.panel._js.scroll_to_bottom()

@@ -1,9 +1,9 @@
-from flx.console import SConsole
+from flx.console import Console
 from flx.console.page import InputPage
 
 from flx.lib.process import sh
 
-console = SConsole(padding=2)
+console = Console(padding=2)
 
 def print(text):
   console.print(text)

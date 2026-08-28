@@ -2,25 +2,21 @@ import os
 import sys
 import json
 import shlex
-
-import importlib.util
+import signal
+import subprocess
 
 from sys import argv
 from time import sleep
 from pathlib import Path
 from random import choice
-from subprocess import PIPE
-from importlib import import_module, reload
 
+import flx
 from flx.app import JApp
 from flx import js, panel
 from flx.lib.process import sh
-from flx.console import Console
 from flx.banners import BANNERS
 from flx.lib.utils import clean, sanitize_html
 from flx.ui import Div, Pre, Center, Animate, Text, Padding, Element
-
-from typing import List, Union
 
 def ensure_dir(path: str) -> str:
   Path(path).mkdir(parents=True, exist_ok=True)
@@ -68,36 +64,54 @@ class Utils:
     raise ValueError(f"Suffix '{target_suffix}' not found in path '{full_path}'")
 
 # can support absolute files
-def run_script(path: Path, *args) -> Union[None, str]:
+def run_script(path: Path, *args) -> None | str:
   # support for binary file
   if path.suffix == "":
-    binary_path = (path).as_posix()
+    binary_path = str(path)
 
     sh(f"chmod +x {binary_path}").run()
-    process = sh(binary_path).pipe(stderr=PIPE)
+    process = sh(binary_path).pipe(stderr=subprocess.PIPE)
     if process.returncode != 0:
       print(f"Error({process.returncode}): {process.error()}")
   elif path.suffix == ".sh":
     # can parse html code
     script_path = (path).as_posix()
 
-    process = sh(f"bash {script_path}").pipe(stderr=PIPE)
+    process = sh(f"bash {script_path}").pipe(stderr=subprocess.PIPE)
     if process.returncode != 0:
       print(f"Error({process.returncode}): {process.error()}")
   # python file
   elif path.suffix == ".py":
-    spec = importlib.util.spec_from_file_location("script", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    runner = Path(__file__).resolve().parent / "pyx.py"
 
-    func = getattr(module, "start", None)
-    if callable(func):
-      func(*args)
-  # lua file simple 
+    process = subprocess.Popen(
+      [
+        sys.executable,
+        "-u",
+        str(runner),
+        str(path),
+      ],
+      stdout=sys.stdout,
+      stdin=sys.stdin,
+      stderr=subprocess.PIPE,
+    )
+    try:
+      process.wait()
+    finally:
+      if process.poll() is None:
+        os.killpg(process.pid, signal.SIGTERM)
+      if process.returncode != 0:
+        print(f"Error({process.returncode}): {process.stderr.read().decode('utf-8').strip()}")
+  # lua file simple
   elif path.suffix == ".lua":
+    from flx.console import Console
     from lupa import LuaRuntime
 
     runtime = LuaRuntime()
+    scr = Console()
+
+    runtime.globals().scr = scr
+    runtime.globals().print = scr.print
 
     with open(path, "r") as file:
       runtime.execute(file.read())
@@ -128,7 +142,7 @@ def get_file_icon(script: Path) -> str:
   else:
     return SCRIPT_ICONS.get(script.suffix, "<div>🤔</div>")
 
-def scripts_list(path: Union[str, Path], suffixes: List[str]) -> List[Path]:
+def scripts_list(path: str | Path, suffixes: list[str]) -> list[Path]:
   path = Path(path)
   if not path.exists() or not path.is_dir():
     return []

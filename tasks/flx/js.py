@@ -1,44 +1,41 @@
 import json
 
-
 def send_event(event, payload=None):
-  print(json.dumps({
+  print("!flx-event:" + json.dumps({
     "event": event,
     "payload": payload
   }), flush=True)
 
-def append(selector, content):
-  send_event("append", {
-    "element": selector,
-    "content": content
+def func(name, *args):
+  send_event("func", {
+    "name": name,
+    "args": args
   })
+
+def update_element(selector, content, tp):
+  func("updateElement", selector, content, tp)
+
+def append(selector, content):
+  update_element(selector, content, "append")
 
 def html(selector, content):
-  send_event("html", {
-    "element": selector,
-    "content": content
-  })
+  update_element(selector, content, "html")
 
 def text(selector, content):
-  send_event("text", {
-    "element": selector,
-    "content": content
-  })
+  update_element(selector, content, "text")
 
 # Run Code
-def run_code(code):
+def run_code(code: str | list[str]):
   if isinstance(code, list):
     code = ";".join(code)
-  send_event("code", code)
+  func("codeEval", code)
 
-# under development dont use yet
 def eval(code):
-  # TODO: do something for stoping user input
   run_code(f"sendInput({code})")
   return input()
 
 # ----- setting config
-def set_config(config: str, value: bool):
+def set_config(name: str, value: bool):
   config_map = {
     # Blocks user input
     "block-user-input": "blockUserInput",
@@ -58,26 +55,25 @@ def set_config(config: str, value: bool):
     "auto-append-scroll": "setAutoAppendScroll",
   }
 
-  if config not in config_map:
-    raise ValueError(f"Error: Invalid '{config}'")
+  if name not in config_map:
+    raise ValueError(f"Error: Invalid '{name}'")
 
-  value_str = "true" if value else "false"
-  run_code(f"{config_map[config]}({value_str})")
-
-def set_default_config():
-  run_code("setAppDefaultConfig()")
-
-def hide_input_panel():
-  run_code("hideInputPanel()")
-
-def set_raw_output_panel(selector):
-  run_code(f"setRawOutputPanel('{selector}')")
+  func("setConfig", config_map[name], value)
 
 # -------- Input
+def _check_error(text):
+  try:
+    data = json.loads(text)
+    if data.get("event") == "error":
+      raise Exception(str(data.get("payload")))
+  except (KeyError, json.decoder.JSONDecodeError, TypeError, AttributeError):
+    return str(text)
+
 # use this method only for input text form user
 def ask_input(label: str = "", autohide=True, focus=False, effect=None):
-  effect = "null" if effect is None or focus or not autohide else f"'{effect}'"
-  run_code(f"askInput(`{label}`, {'true' if focus else 'false'}, {effect})")
+  effect = None if effect is None or focus or not autohide else effect
+
+  func("askInput", label, focus, effect)
 
   text = input()
 
@@ -86,11 +82,32 @@ def ask_input(label: str = "", autohide=True, focus=False, effect=None):
 
   return _check_error(text)
 
+# -------- JS Exposed functions
+def invoke(event, payload = {}):
+  func("invoke", event, payload)
 
-def _check_error(text):
-  try:
-    data = json.loads(text)
-    if data.get("event") == "error":
-      raise Exception(str(data.get("payload")))
-  except (KeyError, json.decoder.JSONDecodeError, TypeError, AttributeError):
-    return str(text)
+def copy_text(text):
+  func("copyText", text)
+
+def notify(message, type = "info", priority = "normal"):
+  func("notify", message, type, priority)
+
+# 
+def hide_input_panel():
+  func("hideInputPanel")
+
+def set_raw_output_panel(selector):
+  func("setRawOutputPanel", selector)
+
+def set_default_config():
+  func("setAppDefaultConfig")
+
+def scroll_to_bottom(selector):
+  func("scrollToBottom", selector)
+
+def scroll_to_top(selector):
+  func("scrollToTop", selector)
+
+def clear_panel(force=False):
+  func("clearPanel", force)
+

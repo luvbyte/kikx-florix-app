@@ -1,15 +1,17 @@
+import flx.loading.hearts
+
 import random
 import requests
 import subprocess
 
 from pathlib import Path
 
-from flx.console import SConsole
+from flx.console import Console
 from flx.console.page import OptionsPage, LoadingPage, InputPage
 
 
 
-console = SConsole()
+console = Console()
 
 
 class OpenProxy:

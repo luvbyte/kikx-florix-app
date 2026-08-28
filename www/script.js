@@ -117,6 +117,21 @@ const setAppDefaultConfig = () => {
   _deepCleanObject(tempObjects);
 };
 
+function setConfig(name, enable) {
+  const maps = {
+    blockUserInput,
+    blockUserClear,
+    setParseAnsi,
+    setDomPurify,
+    setRawOutput,
+    blockUserKillTask,
+    setRawOutputHTML,
+    setAutoAppendScroll
+  };
+
+  return (maps[name] || (() => {}))(Boolean(enable));
+}
+
 // ========== UI HELPERS ==========
 function scrollToBottom(selector = null) {
   const $el = selector ? $(selector) : $panel;
@@ -130,13 +145,13 @@ function scrollToBottom(selector = null) {
   }
 }
 
+function scrollToTop(selector) {
+  $(selector).scrollTop(0);
+}
+
 // This is usefull for backend html code injection for vframe
 function sendArgsJSON(...args) {
   sendInput(JSON.stringify(args));
-}
-
-function scrollToTop(selector) {
-  $(selector).scrollTop(0);
 }
 
 // force clears even clear blocked
@@ -146,10 +161,12 @@ function clearPanel(force = false) {
   }
 }
 
+// Hide input panel
 function hideInputPanel() {
   $taskInputPanel.hide();
 }
 
+// Ask user input
 function askInput(placeholder = "", focus = false, effect = null) {
   if (AppConfig.blockUserInput) {
     return sendError("Input blocked: blockUserInput is true");
@@ -162,6 +179,51 @@ function askInput(placeholder = "", focus = false, effect = null) {
 
   if (focus) {
     $taskInputBox.focus();
+  }
+}
+
+// Copy Text
+function copyText(text) {
+  navigator.clipboard.writeText(text);
+}
+
+// App Invoke
+function invoke(event, payload = {}) {
+  kikxApp.system.invoke(event, payload);
+}
+
+// Alert
+function notify(message, type = "info", priority = "normal") {
+  kikxApp.system.alert(message, {
+    type,
+    priority
+  });
+}
+
+// value, text, html, append
+function updateElement(selector, content, tp) {
+  el = $(selector);
+  switch (tp) {
+    case "value":
+      el.val(content);
+      break;
+    case "text":
+      el.text(content);
+      break;
+    case "append":
+      el.append(content);
+      break;
+    case "html":
+      el.html(content);
+      break;
+  }
+}
+
+function codeEval(code) {
+  try {
+    eval(code);
+  } catch (e) {
+    console.error("Error in eval", e);
   }
 }
 
@@ -185,6 +247,31 @@ const setSubTaskName = (name = null) => {
     $taskTitle.append($styledName); // Append the styled name safely
   }
 };
+
+function _runFunc(name, args) {
+  const exposed = {
+    askInput,
+    copyText,
+    invoke,
+    notify,
+    codeEval,
+    //
+    setConfig,
+    setRawOutputPanel,
+    setAppDefaultConfig,
+    // UI
+    clearPanel,
+    hideInputPanel,
+    scrollToTop,
+    scrollToBottom,
+    updateElement
+  };
+  try {
+    return (exposed[name] || (() => {}))(...args);
+  } catch (e) {
+    console.log("Error on run_func: ", e);
+  }
+}
 
 // ========== TASK OUTPUT HANDLER ==========
 function exec(outputText) {
@@ -224,40 +311,16 @@ function exec(outputText) {
     if (AppConfig.autoAppendScroll) scrollToBottom();
   }
 
-  let data;
-  try {
-    data = JSON.parse(outputText);
-  } catch {
+  // If not an flx event
+  if (!outputText.startsWith("!flx-event:")) {
     return _defaultOutput(outputText);
   }
 
-  const { event, payload } = data;
+  const { event, payload } = JSON.parse(outputText.slice(11));
 
-  if (!event || payload == null) return _defaultOutput(outputText);
+  if (!event) return;
 
-  switch (event) {
-    case "code":
-      try {
-        eval(payload);
-      } catch (e) {
-        console.error("Error in eval:", e);
-      }
-      break;
-    case "html": // Raw html
-      $(payload.element).html(payload.content);
-      break;
-    case "text":
-      $(payload.element).text(payload.content);
-      break;
-    case "append": // append to element
-      $(payload.element).append(payload.content);
-      break;
-    case "clear":
-      clearPanel();
-      break;
-    default:
-      _defaultOutput(outputText);
-  }
+  _runFunc(payload.name, payload.args);
 }
 
 // ========== TASK CONTROL ==========
@@ -334,7 +397,11 @@ async function runFlorixTask(cmd) {
         break;
 
       case "output":
-        exec(output.message);
+        try {
+          exec(output.message);
+        } catch (e) {
+          console.error("Error on execute output", e);
+        }
         break;
 
       case "error":
@@ -347,6 +414,7 @@ async function runFlorixTask(cmd) {
   task.run();
 }
 
+// Home button
 function runMainTask() {
   runFlorixTask(mainTask);
 }

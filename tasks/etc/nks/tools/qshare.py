@@ -1,39 +1,30 @@
-if True:
-  print("Loading...")
+import flx.loading.hearts
 
 import logging
 import mimetypes
+import subprocess
 
-from flx.console import SConsole
+from pathlib import Path
+from flx.ui import Div, Text
+from flx.console import Console
+from flx.lib.utils import clean
+from flx.console.page import FormPage
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, HTMLResponse
 from contextlib import asynccontextmanager
-from pathlib import Path
+from fastapi.responses import FileResponse, HTMLResponse
 
 
-console = SConsole()
+console = Console()
 
 directory = console.fs.ask_directory()
 if not directory:
-  console.print("No directory selected")
-  console.print("Exiting :)")
   exit()
 
 SHARED_DIR = directory.pop()
 
-
-HOST = "localhost"
-PORT = 8080
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-  console.print("Server Running", padding=2, center=True, bg="purple-400/40")
-  console.wg.copy_box(f"http://{HOST}:{PORT}", f"http://{HOST}:{PORT}")
-  
-  console.print(f"Serving: {SHARED_DIR}", padding=1, bg="blue-400/40")
-
   yield
 
 app = FastAPI(lifespan=lifespan)
@@ -146,8 +137,65 @@ async def download_file(path: str):
     media_type=mime_type or 'application/octet-stream'  # Fallback
   )
 
-
 def start():
   import uvicorn
+  
+  options = (
+    FormPage("Service Options")
+      .add_text("host", "Host", value="0.0.0.0")
+      .add_number("port", "Port", value="8080")
+      .add_select("log_level", "Log Level", {
+        "debug": "Debug",
+        "info": "Info",
+        "warning": "Warning",
+        "error": "Error",
+        "critical": "Critical",
+      }, value="info")
+      .add_checkbox("access_log", "Access Log", checked=True)
+      .display(console)
+    )
+  if options is None:
+    exit()
 
-  uvicorn.run(app, host=HOST, port=PORT, reload=False, log_level="info", access_log=False)
+  host = options["host"]
+  port = int(options["port"])
+  log_level = options["log_level"]
+  access_log = options["access_log"]
+
+  console.print("INFO", padding=2, center=True, bg="purple-400/40")
+  console.wg.copy_box(f"http://{host}:{port}", f"http://{host}:{port}")
+
+  console.print(SHARED_DIR, padding=1, bg="blue-400/40")
+
+  el = Div().add_class("flex flex-col p-1 gap-1 text-xs overflow-y-auto")
+  console.append(el)
+
+  class ConsoleHandler(logging.Handler):
+    def emit(self, record):
+      el.append(Text(clean(self.format(record))))
+      el.scroll_to_bottom()
+
+  handler = ConsoleHandler()
+  handler.setFormatter(logging.Formatter("%(levelname)s:     %(message)s"))
+
+  # Uvicorn loggers
+  for name in ("uvicorn", "uvicorn.info", "uvicorn.error", "uvicorn.access"):
+    logger = logging.getLogger(name)
+
+    logger.handlers.clear()
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+
+  config = uvicorn.Config(
+    app,
+    host=host,
+    port=port,
+    reload=False,
+    log_level=log_level,
+    access_log=access_log,
+    log_config=None,
+  )
+
+  server = uvicorn.Server(config)
+  server.run()

@@ -1,7 +1,11 @@
 import html
 import bleach
 
-from bleach import clean
+from bleach import clean as bclean
+
+
+def clean(t) -> str:
+  return bclean(str(t))
 
 # 
 def sanitize_html(html_content: str) -> str:
