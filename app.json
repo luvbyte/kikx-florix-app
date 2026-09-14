@@ -16,7 +16,7 @@
   },
 
   "system": {
-    "access": ["alert", "invoke"]
+    "access": ["alerts", "invoke"]
   },
 
   "services": ["tasker"],
