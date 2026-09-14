@@ -1,5 +1,5 @@
 const kikxApp = new kikxSdk.createClientApp();
-const appTasks = new kikxSdk.AppTasks(kikxApp);
+const tasker = new kikxSdk.TaskerService(kikxApp);
 
 let mainTask = "neko";
 
@@ -344,10 +344,7 @@ function sendError(error) {
 
 async function runFlorixTask(cmd) {
   if (currentTask || !cmd) return;
-
   runningScript = cmd;
-  const task = appTasks.createTask(cmd);
-  await task.init();
 
   $panel.html(`
     <div class="w-full h-full bg-gray-800/40 flex flex-col justify-center items-center font-bold ">
@@ -360,8 +357,7 @@ async function runFlorixTask(cmd) {
   let errorFlag = false;
   let successFlag = false;
 
-  // { output: {}, status }
-  task.on(({ output, status }) => {
+  currentTask = await tasker.doTask(cmd, ({ status, output }) => {
     switch (status) {
       case "started": // on running
         successFlag = true;
@@ -376,7 +372,6 @@ async function runFlorixTask(cmd) {
 
         $taskTitle.css("color", "#66d9e8");
 
-        currentTask = task;
         break;
 
       case "ended": // on stoped
@@ -411,7 +406,6 @@ async function runFlorixTask(cmd) {
         break;
     }
   });
-  task.run();
 }
 
 // Home button
