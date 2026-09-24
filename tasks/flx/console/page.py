@@ -25,19 +25,25 @@ class ConsolePage:
 
 # Page Result
 class PageResult:
-  def __init__(self, input_) -> None:
-    self._input = input_
+  def __init__(self, value, value_type=str) -> None:
+    self._value = value
+    self._value_type = value_type
 
-  def get_input(self) -> str:
-    return self._input
+  @property
+  def raw_value(self):
+    return self._value
+
+  @property
+  def value(self):
+    return self._value_type(self._value)
 
   @property
   def is_closed(self) -> bool:
-    return self.get_input() == "__page__closed__"
+    return self._value == "__page__closed__"
 
   @property
   def is_back(self):
-    return self.get_input() == "__page__back__"
+    return self._value == "__page__back__"
 
 # Page
 class Page:
@@ -53,8 +59,6 @@ class Page:
     self.close_button = close_button
 
     self.banner = banner
-
-    self._input = None
 
   def to_text(self, code: str) -> str:
     return clean(code)
@@ -127,17 +131,17 @@ class Page:
     
     return Animate(el)
 
-  def _start_input_loop(self, console, inject=None) -> PageResult:
+  def _start_input_loop(self, console, inject=None, value_type=str) -> PageResult:
     el = inject or console
     
     while True:
       el.clear()
       el.append(self.render())
 
-      input_ = input()
+      input_text = input()
       el.clear()
 
-      return PageResult(input_)
+      return PageResult(input_text, value_type=value_type)
 
 # Options page
 class OptionsPage(Page):
@@ -166,7 +170,7 @@ class OptionsPage(Page):
     return self._render(f'<div class="flex-1 flex flex-col overflow-y-auto">{"".join(options)}</div>')
  
   def display(self, console, inject=None) -> PageResult:
-    return self._start_input_loop(console, inject=inject)
+    return self._start_input_loop(console, inject=inject, value_type=int)
 
 # Input Text Page
 class InputPage(Page):
@@ -264,7 +268,7 @@ class InputPage(Page):
       if result.is_back or result.is_closed:
         return result
 
-      if self.validate(result.get_input()) is not None:
+      if self.validate(result.raw_value) is not None:
         el.clear()
         return result
 
@@ -320,7 +324,7 @@ class SelectionPage(Page):
   def render_items(self) -> list[str]:
     items = []
 
-    for label, name in self.items.items():
+    for name, label in self.items.items():
       is_selected = name in self.selected
       
       items.append(f"""
@@ -388,7 +392,7 @@ class SelectionPage(Page):
     el.clear()
 
     if input_data == "__cancel__":
-      return []
+      return None
 
     return json.loads(input_data)
 
@@ -695,6 +699,7 @@ class FormPage(Page):
   
   def render_element(self, field, body):
     info_val = field["info"]
+    required = field["required"]
     
     info = f"""
       <label class="block text-white/80 text-sm mt-1 text-xs opacity-60">
@@ -705,7 +710,7 @@ class FormPage(Page):
     return f"""
       <div class="px-3 py-1">
         <label class="block text-white/80 text-sm mb-1 font-heading">
-          {self.to_text(field["label"])}
+          {self.to_text(field["label"])}  {'*' if required else ''}
         </label>
         {body}{info}
       </div>
@@ -750,9 +755,16 @@ class FormPage(Page):
     extra_attrs = self.get_attrs(field)
     selected_value = field["value"]
 
-    options = "".join(
+    placeholder = ""
+    if not selected_value:
+      placeholder = """
+      <option value="" disabled selected hidden>
+        Select...
+      </option>
+      """
+
+    options = placeholder + "".join(
       f"""
-      {'<option value="" disabled selected hidden>Select...</option>' if len(selected_value) <= 0 else ''}
       <option
         class="bg-zinc-900 text-white"
         value="{self.to_text(value)}"

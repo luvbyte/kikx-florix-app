@@ -9,8 +9,12 @@ from flx import panel
 from flx.console import Console
 from flx.console.page import FormPage
 
+from flx.lib.process import PTYProcess
+
 
 console = Console()
+console.check_pkgs("cloudflared")
+
 
 options = (
   FormPage("Cloudflared Tunnel")
@@ -18,8 +22,8 @@ options = (
     "mode",
     "Tunnel Mode",
     {
-      "Quick Tunnel": "quick",
-      "Named Tunnel": "named",
+      "quick": "Quick Tunnel",
+      "named": "Named Tunnel"
     }
   )
   .add_text("tunnel_name", "Tunnel Name")
@@ -29,9 +33,9 @@ options = (
     "protocol",
     "Protocol",
     {
-      "Auto": "auto",
-      "HTTP/2": "http2",
-      "QUIC": "quic",
+      "auto": "Auto",
+      "http2": "HTTP/2",
+      "quic": "QUIC"
     }
   )
   .add_checkbox("no_tls_verify", "Disable TLS Verification", False)
@@ -65,27 +69,8 @@ if options["no_tls_verify"]:
 if options["metrics_port"]:
   args += ["--metrics", f"localhost:{options['metrics_port']}"]
 
+
 panel.clear(force=True)
 
-master, slave = pty.openpty()
+PTYProcess(args, print).run()
 
-process = subprocess.Popen(
-  args,
-  stdin=slave,
-  stdout=slave,
-  stderr=slave,
-  close_fds=True,
-)
-
-os.close(slave)
-
-while process.poll() is None:
-  try:
-    data = os.read(master, 4096)
-    if data:
-      print(data.decode(errors="replace"))
-  except OSError:
-    break
-
-os.close(master)
-process.wait()

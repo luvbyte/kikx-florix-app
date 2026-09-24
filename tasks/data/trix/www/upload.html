@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Upload Files</title>
+
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        padding: 20px;
+        display: grid;
+        place-items: center;
+        font-family: system-ui, sans-serif;
+        background: #f5f7fb;
+        color: #111827;
+      }
+
+      .container {
+        width: min(600px, 100%);
+      }
+
+      .card {
+        padding: 24px;
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        background: white;
+        box-shadow: 0 10px 30px #00000008;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 24px;
+      }
+
+      .description {
+        margin: 0 0 24px;
+        color: #6b7280;
+        font-size: 14px;
+      }
+
+      .drop-zone {
+        padding: 35px 20px;
+        border: 2px dashed #d1d5db;
+        border-radius: 12px;
+        text-align: center;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+
+      .drop-zone:hover,
+      .drop-zone.dragover {
+        border-color: #2563eb;
+        background: #eff6ff;
+      }
+
+      .drop-icon {
+        font-size: 36px;
+        margin-bottom: 10px;
+      }
+
+      .drop-zone p {
+        margin: 5px 0;
+      }
+
+      .muted {
+        color: #6b7280;
+        font-size: 13px;
+      }
+
+      .buttons {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 20px;
+        flex-wrap: wrap;
+      }
+
+      button {
+        border: 0;
+        border-radius: 8px;
+        padding: 10px 16px;
+        font: inherit;
+        font-size: 14px;
+        cursor: pointer;
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .primary {
+        background: #2563eb;
+        color: white;
+      }
+
+      .secondary {
+        background: #f3f4f6;
+        color: #374151;
+      }
+
+      .file-list {
+        margin-top: 20px;
+      }
+
+      .file-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 0;
+        border-bottom: 1px solid #f0f0f0;
+      }
+
+      .file-preview {
+        width: 44px;
+        height: 44px;
+        flex-shrink: 0;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        border-radius: 8px;
+        background: #f3f4f6;
+        font-size: 20px;
+      }
+
+      .file-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .file-info {
+        min-width: 0;
+        flex: 1;
+      }
+
+      .file-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .file-size {
+        margin-top: 3px;
+        color: #6b7280;
+        font-size: 12px;
+      }
+
+      .remove {
+        padding: 5px 10px;
+        background: #fee2e2;
+        color: #b91c1c;
+      }
+
+      .empty {
+        padding: 20px 0;
+        text-align: center;
+        color: #9ca3af;
+        font-size: 13px;
+      }
+
+      .progress-container {
+        display: none;
+        margin-top: 20px;
+      }
+
+      .progress-bar {
+        width: 100%;
+        height: 8px;
+        overflow: hidden;
+        border-radius: 10px;
+        background: #e5e7eb;
+      }
+
+      .progress-fill {
+        width: 0%;
+        height: 100%;
+        background: #2563eb;
+        transition: width 0.15s;
+      }
+
+      .progress-text {
+        margin-top: 6px;
+        color: #6b7280;
+        font-size: 12px;
+      }
+
+      .footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 24px;
+      }
+
+      .status {
+        min-width: 0;
+        color: #6b7280;
+        font-size: 13px;
+      }
+
+      .footer-buttons {
+        display: flex;
+        gap: 8px;
+      }
+
+      @media (max-width: 480px) {
+        body {
+          padding: 10px;
+        }
+
+        .card {
+          padding: 18px;
+        }
+
+        .footer {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .footer-buttons {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .footer-buttons button {
+          width: 100%;
+        }
+      }
+    </style>
+
+    <script src="/static/api.js"></script>
+  </head>
+
+  <body>
+    <main class="container">
+      <section class="card">
+        <h1>Upload Files</h1>
+
+        <p class="description">
+          Select multiple files or drag and drop them below.
+        </p>
+
+        <div
+          id="dropZone"
+          class="drop-zone"
+          role="button"
+          tabindex="0"
+          aria-label="Choose files"
+        >
+          <div class="drop-icon">☁️</div>
+
+          <p><strong>Drop files here</strong></p>
+
+          <p class="muted">or choose files from your device</p>
+
+          <div class="buttons">
+            <button id="imageBtn" class="primary" type="button">
+              🖼️ Images
+            </button>
+
+            <button id="documentBtn" class="secondary" type="button">
+              📄 Documents
+            </button>
+          </div>
+
+          <input id="imageInput" type="file" accept="image/*" multiple hidden />
+
+          <input
+            id="documentInput"
+            type="file"
+            accept=".pdf,.doc,.docx,.txt,.rtf,.xls,.xlsx,.ppt,.pptx,.csv,.zip"
+            multiple
+            hidden
+          />
+        </div>
+
+        <div id="fileList" class="file-list"></div>
+
+        <div id="progressContainer" class="progress-container">
+          <div class="progress-bar">
+            <div id="progressFill" class="progress-fill"></div>
+          </div>
+
+          <div id="progressText" class="progress-text">0%</div>
+        </div>
+
+        <div class="footer">
+          <div id="status" class="status">No files selected.</div>
+
+          <div class="footer-buttons">
+            <button id="clearBtn" class="secondary" type="button">Clear</button>
+
+            <button id="uploadBtn" class="primary" type="button" disabled>
+              Upload
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      (() => {
+        const MAX_FILES = 50;
+        const MAX_FILE_SIZE = 50 * 1024 * 1024;
+
+        const dropZone = document.getElementById("dropZone");
+        const imageBtn = document.getElementById("imageBtn");
+        const documentBtn = document.getElementById("documentBtn");
+
+        const imageInput = document.getElementById("imageInput");
+        const documentInput = document.getElementById("documentInput");
+
+        const fileList = document.getElementById("fileList");
+        const status = document.getElementById("status");
+
+        const uploadBtn = document.getElementById("uploadBtn");
+        const clearBtn = document.getElementById("clearBtn");
+
+        const progressContainer = document.getElementById("progressContainer");
+
+        const progressFill = document.getElementById("progressFill");
+
+        const progressText = document.getElementById("progressText");
+
+        let files = [];
+
+        const formatSize = bytes => {
+          if (!bytes) return "0 B";
+
+          const units = ["B", "KB", "MB", "GB"];
+
+          const index = Math.min(
+            Math.floor(Math.log(bytes) / Math.log(1024)),
+            units.length - 1
+          );
+
+          return `${(bytes / Math.pow(1024, index)).toFixed(
+            index ? 1 : 0
+          )} ${units[index]}`;
+        };
+
+        const escapeHtml = value =>
+          String(value).replace(
+            /[&<>"']/g,
+            char =>
+              ({
+                "&": "&amp;",
+                "<": "&lt;",
+                ">": "&gt;",
+                '"': "&quot;",
+                "'": "&#039;"
+              })[char]
+          );
+
+        function addFiles(inputFiles) {
+          let rejected = 0;
+
+          for (const file of Array.from(inputFiles)) {
+            const duplicate = files.some(
+              existing =>
+                existing.name === file.name &&
+                existing.size === file.size &&
+                existing.lastModified === file.lastModified
+            );
+
+            if (
+              duplicate ||
+              file.size > MAX_FILE_SIZE ||
+              files.length >= MAX_FILES
+            ) {
+              rejected++;
+              continue;
+            }
+
+            files.push(file);
+          }
+
+          render();
+
+          if (rejected) {
+            alert(
+              `${rejected} file(s) skipped. Check duplicates, size, or limit.`
+            );
+          }
+        }
+
+        function removeFile(index) {
+          files.splice(index, 1);
+          render();
+        }
+
+        function resetFiles() {
+          files = [];
+
+          imageInput.value = "";
+          documentInput.value = "";
+
+          render();
+
+          progressContainer.style.display = "none";
+          progressFill.style.width = "0%";
+          progressText.textContent = "0%";
+        }
+
+        function render() {
+          if (!files.length) {
+            fileList.innerHTML = `
+          <div class="empty">
+            Selected files will appear here.
+          </div>
+        `;
+
+            status.textContent = "No files selected.";
+            uploadBtn.disabled = true;
+            return;
+          }
+
+          fileList.innerHTML = files
+            .map((file, index) => {
+              const isImage = file.type.startsWith("image/");
+
+              const preview = isImage
+                ? `<img src="${URL.createObjectURL(file)}" alt="">`
+                : "📄";
+
+              return `
+            <div class="file-item">
+              <div class="file-preview">
+                ${preview}
+              </div>
+
+              <div class="file-info">
+                <div
+                  class="file-name"
+                  title="${escapeHtml(file.name)}"
+                >
+                  ${escapeHtml(file.name)}
+                </div>
+
+                <div class="file-size">
+                  ${formatSize(file.size)}
+                </div>
+              </div>
+
+              <button
+                class="remove"
+                type="button"
+                data-index="${index}"
+                aria-label="Remove file"
+              >
+                ×
+              </button>
+            </div>
+          `;
+            })
+            .join("");
+
+          fileList.querySelectorAll(".remove").forEach(button => {
+            button.addEventListener("click", () => {
+              removeFile(Number(button.dataset.index));
+            });
+          });
+
+          const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+
+          status.textContent = `${files.length} file(s) · ${formatSize(totalSize)}`;
+
+          uploadBtn.disabled = false;
+        }
+
+        async function uploadFiles() {
+          if (!files.length) return;
+
+          uploadBtn.disabled = true;
+          clearBtn.disabled = true;
+
+          progressContainer.style.display = "block";
+          progressFill.style.width = "0%";
+          progressText.textContent = "Uploading 0%";
+          status.textContent = "Uploading...";
+
+          try {
+            const result = await trixApi.upload("/upload", files, {
+              fieldName: "files",
+
+              onProgress(progress) {
+                progressFill.style.width = `${progress.percent}%`;
+
+                progressText.textContent = `Uploading ${progress.percent}%`;
+              }
+            });
+
+            progressFill.style.width = "100%";
+            progressText.textContent = "Upload complete.";
+
+            status.textContent = "Files uploaded successfully.";
+
+            console.log("Upload result:", result);
+
+            alert("Files uploaded successfully.");
+
+            // Reset files after successful upload
+            resetFiles();
+          } catch (error) {
+            console.error("Upload failed:", error);
+
+            status.textContent = "Upload failed.";
+
+            alert(error?.message || "Something went wrong during upload.");
+          } finally {
+            uploadBtn.disabled = false;
+            clearBtn.disabled = false;
+          }
+        }
+
+        // Open image picker
+        imageBtn.addEventListener("click", event => {
+          event.stopPropagation();
+          imageInput.click();
+        });
+
+        // Open document picker
+        documentBtn.addEventListener("click", event => {
+          event.stopPropagation();
+          documentInput.click();
+        });
+
+        // Click drop zone
+        dropZone.addEventListener("click", event => {
+          if (event.target.closest("button") || event.target.closest("input")) {
+            return;
+          }
+
+          imageInput.click();
+        });
+
+        // Image selection
+        imageInput.addEventListener("change", () => {
+          addFiles(imageInput.files);
+          imageInput.value = "";
+        });
+
+        // Document selection
+        documentInput.addEventListener("change", () => {
+          addFiles(documentInput.files);
+          documentInput.value = "";
+        });
+
+        // Keyboard accessibility
+        dropZone.addEventListener("keydown", event => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            imageInput.click();
+          }
+        });
+
+        // Drag events
+        ["dragenter", "dragover"].forEach(eventName => {
+          dropZone.addEventListener(eventName, event => {
+            event.preventDefault();
+            dropZone.classList.add("dragover");
+          });
+        });
+
+        ["dragleave", "drop"].forEach(eventName => {
+          dropZone.addEventListener(eventName, event => {
+            event.preventDefault();
+            dropZone.classList.remove("dragover");
+          });
+        });
+
+        // Drop files
+        dropZone.addEventListener("drop", event => {
+          addFiles(event.dataTransfer.files);
+        });
+
+        // Clear all
+        clearBtn.addEventListener("click", () => {
+          resetFiles();
+        });
+
+        // Upload
+        uploadBtn.addEventListener("click", uploadFiles);
+
+        render();
+      })();
+    </script>
+  </body>
+</html>

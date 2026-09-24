@@ -1,12 +1,17 @@
 import flx.loading.hearts
 
+import re
+
+import os
+import sys
 import shlex
 import subprocess
 
 from time import sleep
 from pathlib import Path
+from datetime import datetime
 
-from flx.js import invoke
+from flx.js import open_app
 from flx.lib.utils import clean
 from flx.console import Console
 from flx.utils import generate_uuid
@@ -15,7 +20,6 @@ from flx.console.page import SelectionPage
 from flx.path import HOME_PATH, ensure_dir, joinpath
 
 from concurrent.futures import ThreadPoolExecutor
-
 
 
 CLIST = [
@@ -56,6 +60,8 @@ CLIST = [
 class ConsoleScreen(Console):
   def __init__(self) -> None:
     super().__init__()
+    
+    self.check_pkgs("adb")
 
   def log(self, message, color="blue", title=None):
     message = clean(str(message))
@@ -115,22 +121,56 @@ def adb(command: str, input_text: list[str] = [], shell: bool = False) -> str:
 def prop(serial: str, name: str) -> str:
   return adb(f"-s {serial} shell getprop {name}")
 
+def remove_redundant_paths(paths):
+  paths = list({Path(p) for p in paths})
+  paths.sort(key=lambda p: len(p.parts))
+
+  result = []
+
+  for path in paths:
+    if any(parent in path.parents for parent in result):
+      continue
+
+    result.append(path)
+
+  return [str(path) for path in result]
+
+def parse_paths(text: str) -> dict[str, list[str]]:
+  result: dict[str, list[str]] = {}
+  current_key = None
+
+  for line in text.splitlines():
+    line = line.strip()
+
+    if not line or line.startswith("#"):
+      continue
+
+    if line.endswith(":"):
+      current_key = line[:-1]
+      result[current_key] = []
+    elif current_key:
+      result[current_key].append(line)
+
+  return result
+
 # ---------------- Device
 class Config:
   def __init__(self) -> None:
     self.path: Path = ensure_dir(HOME_PATH / "etc/xadb")
+    self.pulls_file_path: Path = Path(__file__).parent / "_pulls.xadb"
 
-    self.scripts_dir: Path = ensure_dir(self.path / "scripts")
-    self.uploads_dir: Path = ensure_dir(self.path / "uploads")
+  def get_pulls_list(self) -> dict:
+    return parse_paths(self.pulls_file_path.read_text())
 
 class Device:
   def __init__(self, serial: str, uploads_dir) -> None:
     self.id: str = generate_uuid()
+    self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
     self.serial: str = serial
     self.model: str = prop(self.serial, "ro.product.model")
     self.manufacturer: str = prop(self.serial, "ro.product.manufacturer")
 
-    self.uploads_name: str = f"{self.manufacturer}_{self.model}_{self.id}"
+    self.uploads_name: str = f"{self.manufacturer}_{self.model}_{self.timestamp}"
 
     # / device path
     self.path: Path = ensure_dir(uploads_dir / self.uploads_name)
@@ -150,16 +190,14 @@ class Device:
     return self.exec(f"shell {command}", shell=shell)
 
   # Pull file from device 
-  def pull(self, line: str, script_name: str) -> None:
+  def pull(self, path: str) -> None:
     try:
-      src, filename = shlex.split(line)
+      dest: Path = ensure_dir(joinpath(self.files_path, path.lstrip("/\\")))
+      self.exec(f"pull {path} {dest}")
 
-      dest_dir: Path = ensure_dir(joinpath(self.files_path, script_name))
-      self.exec(f"pull {src} {joinpath(dest_dir / filename)}")
-
-      scr.log(src, color="green", title=script_name)
+      scr.log(path, color="green")
     except Exception:
-      scr.log(src, color="red", title=script_name)
+      scr.log(path, color="red")
 
   # Save to file
   def save_to_file(self, command: str, filename: str) -> None:
@@ -174,9 +212,6 @@ class XADB:
     self.config: Config = Config()
     self.selected: Device | None = None
 
-  def get_scripts_list(self) -> list[str]:
-    return [p.stem for p in self.config.scripts_dir.iterdir() if p.suffix == ".xadb"]
-
   def list_devices(self) -> list[Device]:
     output = adb("devices")
     devices = []
@@ -189,7 +224,7 @@ class XADB:
       if status == "offline":
         continue
       
-      devices.append(Device(serial, self.config.uploads_dir))
+      devices.append(Device(serial, self.config.path))
 
     return devices
 
@@ -233,63 +268,76 @@ class XADB:
       if input_text.startswith("__select__"):
         return devices_list[int(input_text[10:])]
 
-  def display_scripts(self) -> list[str]:
+  def display_pulls(self) -> list[str]:
     if not self.selected:
       return None
+    
+    pulls = self.config.get_pulls_list()
 
     page = SelectionPage({
-      name.capitalize(): name for name in self.get_scripts_list()
-    }, title="Select scripts to run")
+      name: name.capitalize() for name in pulls
+    }, title="Select paths to pull").display(scr)
 
-    return page.display(scr) or []
+    if page is None:
+      exit()
 
-  def run_script(self, name: str) -> None:
-    code = joinpath(self.config.scripts_dir / f"{name}.xadb").read_text()
-    for line in code.splitlines():
-      line = line.strip()
-
-      if line.startswith("//") or len(line) <= 0:
-        continue
-
-      self.selected.pull(line, script_name=name)
+    return remove_redundant_paths([
+      path
+      for name in page
+      for path in pulls.get(name, [])
+    ])
 
   # ---------------- Main
-  def run_scripts(self, scripts: list[str]) -> None:
-    for name in scripts:
-      self.run_script(name)
+
+  def run_pulls(self, pulls: list[str]) -> int:
+    with ThreadPoolExecutor(max_workers=8) as executor:
+      futures = [
+        executor.submit(self.selected.pull, path)
+        for path in pulls
+      ]
+  
+      for future in futures:
+        future.result()
+
+    return len(pulls)
 
   def run_clist(self) -> None:
-    for line in CLIST:
-      self.selected.save_to_file(*line)
+    with ThreadPoolExecutor(max_workers=8) as executor:
+      futures = [
+        executor.submit(self.selected.save_to_file, *line)
+        for line in CLIST
+      ]
+
+      for future in futures:
+        future.result()
 
   def start(self) -> None:
     scr.pre_center('<svg xmlns="http://www.w3.org/2000/svg" class="animate-pulse" width="46" height="46" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" fill-rule="evenodd" d="M12 1a1.5 1.5 0 0 0-1.5 1.5V4a1.5 1.5 0 0 0 3 0V2.5A1.5 1.5 0 0 0 12 1m3.5 5.5a1.5 1.5 0 0 1 3 0V8a1.5 1.5 0 0 1-3 0zM5.5 7a1.5 1.5 0 1 1 3 0v4.5a1.5 1.5 0 0 1-3 0zM12 7a1.5 1.5 0 0 0-1.5 1.5v7a1.5 1.5 0 0 0 3 0v-7A1.5 1.5 0 0 0 12 7M2.5 9.75a1.5 1.5 0 0 0-1.5 1.5v1.5a1.5 1.5 0 0 0 3 0v-1.5a1.5 1.5 0 0 0-1.5-1.5m3 6.25a1.5 1.5 0 0 1 3 0v1.5a1.5 1.5 0 0 1-3 0zm6.5 2.5a1.5 1.5 0 0 0-1.5 1.5v1.5a1.5 1.5 0 0 0 3 0V20a1.5 1.5 0 0 0-1.5-1.5m9.5-8.75a1.5 1.5 0 0 0-1.5 1.5v1.5a1.5 1.5 0 0 0 3 0v-1.5a1.5 1.5 0 0 0-1.5-1.5m-6 2.75a1.5 1.5 0 0 1 3 0V17a1.5 1.5 0 0 1-3 0z" clip-rule="evenodd" /></svg>')
     
     self.selected = self.display_devices()
-    scripts = self.display_scripts()
+    pulls = self.display_pulls()
 
     scr.clear()
     
+    pulls_count = 0
+    clist_count = 0
+    
     with ThreadPoolExecutor() as executor:
       future1 = executor.submit(self.run_clist)
-      future2 = executor.submit(lambda: self.run_scripts(scripts))
+      future2 = executor.submit(lambda: self.run_pulls(pulls))
 
       # Wait for both to finish
-      future1.result()
-      future2.result()
-    
+      clist_count = future1.result()
+      pulls_count = future2.result()
+
     scr.table("COMPLETED", {
       "device": self.selected.name,
-      "scripts": len(scripts),
-      "path": f"etc/xadb/uploads/{self.selected.uploads_name}"
+      "pulls": pulls_count,
+      "clist": clist_count,
+      "path": f"etc/xadb/{self.selected.uploads_name}"
     })
 
-    invoke("openApp", {
-      "name": "com.kikx.explorer",
-        "query": {
-          "path": f"home://etc/xadb/uploads/{self.selected.uploads_name}"
-        }
-      })
+    open_app("com.kikx.explorer", path=f"home://etc/xadb/{self.selected.uploads_name}")
 
     scr.append('<div class="min-h-32"></div>')
 

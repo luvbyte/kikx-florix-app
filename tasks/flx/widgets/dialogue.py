@@ -12,10 +12,10 @@ class Alert(Div):
     super().__init__()
 
     styles = {
-      "info": "bg-blue-800/90 to-slate-900 text-cyan-200 rounded-lg shadow-xl border border-cyan-400",
-      "error": "bg-red-800/90 to-slate-900 text-cyan-200 rounded-lg shadow-xl border border-red-400",
-      "warning": "bg-yellow-800/90 to-slate-900 text-cyan-200 rounded-lg shadow-xl border border-yellow-400",
-      "success": "bg-green-800/90 to-slate-900 text-cyan-200 rounded-lg shadow-xl border border-green-400",
+      "info": "bg-blue-900 text-blue-100 rounded-lg shadow-lg border border-blue-500",
+      "error": "bg-red-900 text-red-100 rounded-lg shadow-lg border border-red-500",
+      "warning": "bg-yellow-900 text-yellow-100 rounded-lg shadow-lg border border-yellow-500",
+      "success": "bg-green-900 text-green-100 rounded-lg shadow-lg border border-green-500",
     }
     
     animation = {
@@ -29,9 +29,9 @@ class Alert(Div):
 
     self.body = Div(f"""
       <!-- Header -->
-      { f'<div class="text-sm text-center p-2 font-semibold rounded-t-lg tracking-widest border-b border-white/30">{clean(title)}</div>' if title else '' }
+      { f'<div class="text-sm text-center p-2 font-semibold rounded-t-lg tracking-widest border-b border-white/30 truncate">{clean(title)}</div>' if title else '' }
       <!-- Body -->
-      <div class="flex-1 break-all {"min-h-[100px]" if not confirm else ""} p-4 text-sm font-mono tracking-wide">
+      <div class="flex-1 break-all {"min-h-[100px]" if not confirm else ""} p-2 text-sm tracking-wide">
         {clean(str(message))}
       </div>
         <!-- Buttons (if confirm dialog) -->

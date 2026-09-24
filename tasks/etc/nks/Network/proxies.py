@@ -7,11 +7,13 @@ import subprocess
 from pathlib import Path
 
 from flx.console import Console
+from flx.os import is_installed
 from flx.console.page import OptionsPage, LoadingPage, InputPage
 
 
 
 console = Console()
+console.check_pkgs("curl")
 
 
 class OpenProxy:
@@ -79,7 +81,7 @@ open_proxy = OpenProxy()
 
 def ask_count(max_length=None):
   available = max_length or open_proxy.proxies_length
-  return int(InputPage(body=f"Availbale ({available})", input_type=int, placeholder=f"Enter proxies count ({available})", min_length=1, max_length=available).display(console).get_input())
+  return int(InputPage(body=f"Availbale ({available})", input_type=int, placeholder=f"Enter proxies count ({available})", min_length=1, max_length=available).display(console).value)
 
 def print_proxies(proxies, label=None):
   for proxy in proxies:
@@ -97,7 +99,7 @@ def proto_page():
   elif result.is_back:
     start()
   else:
-    proto = protocols[int(result.get_input()) - 1]
+    proto = protocols[result.value - 1]
     return open_proxy.get_proxies(startswith=proto)
 
 
@@ -111,7 +113,7 @@ def start():
   if result.is_closed:
     return None
 
-  option = int(result.get_input())
+  option = result.value
 
   if option == 1:
     open_proxy.update_proxies(ui=True)

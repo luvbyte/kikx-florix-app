@@ -1,7 +1,13 @@
 import html
 import bleach
+import warnings
 
 from bleach import clean as bclean
+
+from bleach.sanitizer import NoCssSanitizerWarning
+
+
+warnings.filterwarnings("ignore", category=NoCssSanitizerWarning)
 
 
 def clean(t) -> str:
@@ -25,7 +31,7 @@ def sanitize_html(html_content: str) -> str:
   }
 
   cleaned = bleach.clean(
-    html_content,
+    str(html_content),
     tags=allowed_tags,
     attributes=allowed_attributes,
     strip=True,  # strips disallowed tags like <script>

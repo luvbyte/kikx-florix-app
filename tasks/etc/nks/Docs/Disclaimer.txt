@@ -1,0 +1,34 @@
+<div class="mx-auto max-w-3xl rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-2 text-yellow-100">
+  <div class="flex gap-4">
+    <div class="shrink-0 text-xl" aria-hidden="true">
+      ⚠️
+    </div>
+
+    <div>
+      <h2 class="mb-2 text-sm font-semibold text-yellow-400">
+        Educational Use Disclaimer
+      </h2>
+
+      <p class="mb-3 text-xs leading-6 text-gray-300">
+        All scripts and code in this app are provided for
+        <strong class="text-white">educational and informational purposes only</strong>.
+      </p>
+
+      <p class="mb-3 text-xs leading-6 text-gray-300">
+        You are solely responsible for how you use, modify, or execute
+        any code from this app. The author is
+        <strong class="text-white">
+          not responsible for any damage, loss, misuse, or consequences
+        </strong>
+        resulting from the use of these scripts.
+      </p>
+
+      <p class="text-xs leading-6 text-gray-300">
+        By using this app, you acknowledge that you do so
+        <strong class="text-white">at your own risk</strong> and are responsible
+        for complying with all applicable laws, regulations, and third-party
+        terms of service.
+      </p>
+    </div>
+  </div>
+</div>

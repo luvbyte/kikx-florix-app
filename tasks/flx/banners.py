@@ -1,7 +1,7 @@
-from .ui import Pre, Text, Animate
+from .ui import Pre, Div, Animate
 
 
-B1 = Animate(Pre(Text(r"""
+B1 = Animate(Pre(Div(r"""
 ♡  /)/)
  （„• ֊ •„)♡              
 ┏ • UU • - • - • - • - • - • - • ღ❦ღ┓
@@ -15,7 +15,7 @@ B1 = Animate(Pre(Text(r"""
 """)))
 B1.add_class("w-full h-full flex items-end justify-center")
 
-B2 = Animate(Pre(Text(r"""
+B2 = Animate(Pre(Div(r"""
   /)/) E            K (\(\
  (•.•)/              \(•.•)
 N/| |      FLORIX      | |\O
@@ -23,14 +23,14 @@ N/| |      FLORIX      | |\O
 """)), "slideInUp")
 B2.add_class("w-full h-full flex items-end justify-center text-sm")
 
-B3 = Animate(Pre(Text(r"""
+B3 = Animate(Pre(Div(r"""
 (`“ •.  (`“•.¸🌼¸.•“´)  ¸. •“´)
     🌸«•🍃   NEKO  🍃•“»🌸
 (¸. • “´(¸.•“´🌼 `“•)` “° •.¸)
 """)), "rubberBand")
 B3.add_class("w-full h-full flex items-center justify-center")
 
-B4 = Animate(Pre(Text(r"""
+B4 = Animate(Pre(Div(r"""
    /)/)  FLORIX
   (•.•)丿  X   NEKO
 ノ/   /  
@@ -38,7 +38,7 @@ B4 = Animate(Pre(Text(r"""
 """)), "lightSpeedInLeft")
 B4.add_class("w-full h-full flex justify-start items-end text-sm")
 
-B5 = Animate(Pre(Text(r"""┊    ┊    ┊    ┊    ┊    ┊
+B5 = Animate(Pre(Div(r"""┊    ┊    ┊    ┊    ┊    ┊
 ┊    ┊    ┊    ┊    ┊    💗
 ┊    ┊    ┊    ┊    ❤️    X
 ┊    ┊    ┊   💛     I  

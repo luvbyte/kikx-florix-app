@@ -1,0 +1,138 @@
+# Photos and videos taken by the camera
+Images:
+  /sdcard/DCIM
+  /sdcard/Pictures
+  /sdcard/DCIM/Camera
+
+# Screenshots
+Screenshots:
+  /sdcard/DCIM/Screenshots
+  /sdcard/Pictures/Screenshots
+
+# Downloaded files from web browsers and apps
+Downloads:
+  /sdcard/Download
+  /sdcard/Downloads
+
+# General documents, PDFs, and text files
+Documents:
+  /sdcard/Documents
+
+# Music and audio
+Music:
+  /sdcard/Music
+  /sdcard/Audio
+  /sdcard/Sounds
+
+# Movies, videos, and screen recordings
+Videos:
+  /sdcard/Movies
+  /sdcard/Videos
+  /sdcard/DCIM/Camera
+
+Screen Recordings:
+  /sdcard/Movies/ScreenRecordings
+  /sdcard/Pictures/ScreenRecordings
+
+# Ringtones and notification sounds
+Ringtones:
+  /sdcard/Alarms
+  /sdcard/Ringtones
+  /sdcard/Notifications
+
+# Voice recordings
+Voice Recordings:
+  /sdcard/Recordings
+  /sdcard/Music/Recordings
+  /sdcard/Sounds/Recordings
+
+# Bluetooth files
+Bluetooth:
+  /sdcard/Bluetooth
+
+# Android application media
+Android Media:
+  /sdcard/Android/media
+
+# Android application data (Android 11+)
+Android Data:
+  /sdcard/Android/data
+
+# Android application OBB files
+Android OBB:
+  /sdcard/Android/obb
+
+# Telegram
+Telegram:
+  /sdcard/Telegram
+  /sdcard/Android/media/org.telegram.messenger/Telegram
+  /sdcard/Android/data/org.telegram.messenger/files/Telegram
+
+# WhatsApp
+WhatsApp:
+  /sdcard/WhatsApp
+  /sdcard/Android/media/com.whatsapp/WhatsApp
+
+# WhatsApp Business
+WhatsApp Business:
+  /sdcard/WhatsApp Business
+  /sdcard/Android/media/com.whatsapp.w4b/WhatsApp Business
+
+# Instagram
+Instagram:
+  /sdcard/Pictures/Instagram
+  /sdcard/Android/media/com.instagram.android
+
+# Facebook
+Facebook:
+  /sdcard/Pictures/Facebook
+  /sdcard/Android/media/com.facebook.katana
+
+# Messenger
+Messenger:
+  /sdcard/Android/media/com.facebook.orca
+
+# Snapchat
+Snapchat:
+  /sdcard/Android/media/com.snapchat.android
+
+# TikTok
+TikTok:
+  /sdcard/Movies/TikTok
+  /sdcard/Pictures/TikTok
+  /sdcard/Android/media/com.zhiliaoapp.musically
+
+# X / Twitter
+X:
+  /sdcard/Android/media/com.twitter.android
+
+# Google Messages
+Messages:
+  /sdcard/Android/media/com.google.android.apps.messaging
+
+# Screen recordings
+Screen Recordings:
+  /sdcard/DCIM/ScreenRecordings
+  /sdcard/Movies/ScreenRecordings
+  /sdcard/Pictures/ScreenRecordings
+
+# Wallpapers
+Wallpapers:
+  /sdcard/Wallpapers
+  /sdcard/Pictures/Wallpapers
+
+# E-books
+Books:
+  /sdcard/Books
+  /sdcard/EBooks
+  /sdcard/Documents/Books
+
+# Temporary / miscellaneous files
+Misc:
+  /sdcard/Temp
+  /sdcard/.temp
+  /sdcard/.cache
+
+# Full storage data
+SDcard:
+  /sdcard

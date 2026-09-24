@@ -1,10 +1,9 @@
-import json
 from uuid import uuid4
 
 from flx import js
 from flx.lib.utils import Events
 
-from typing import Callable, Union, Optional, List, Dict, Any, Iterable
+from typing import Callable, Any
 
 VOID_TAGS = [
   "area", "base", "br", "col", "embed", "hr", "img", "input",
@@ -31,21 +30,50 @@ class JS:
   def is_injected(self) -> bool:
     return self._injected
   
-  def func(self, code: Union[str, Callable[[], str]]) -> None:
+  @property
+  def selector(self) -> str:
+    return f"#{self.id}"
+  
+  # Update elemet
+  def update_element(self, tp, content: str | Callable):
     if not self.is_injected:
-      return
+      return None
+
+    content = content() if callable(content) else content
+
+    js.update_element(self.selector, content, tp)
+
+  def call_func(self, name, content: str | Callable) -> None:
+    if not self.is_injected:
+      return None
+
+    content = content() if callable(content) else content
+
+    js.call_func(self.id, name, content)
+
+  def set_val(self, name, content: str | Callable) -> None:
+    if not self.is_injected:
+      return None
+
+    content = content() if callable(content) else content
+
+    js.set_val(self.id, name, content)
+
+  def func(self, code: str | Callable) -> None:
+    if not self.is_injected:
+      return None
 
     code = code() if callable(code) else code
     js.run_code(f"document.getElementById('{self.id}').{code}")
 
-  def jfunc(self, code: Union[str, Callable[[], str]]) -> None:
+  def jfunc(self, code: str | Callable) -> None:
     if not self.is_injected:
-      return
+      return None
 
     code = code() if callable(code) else code
     js.run_code(f"$('#{self.id}').{code}")
   
-  def on(self, event: str, code: Union[str, List]):
+  def on(self, event: str, code: str | list):
     if isinstance(code, list):
       code = ";".join(code)
     self.jfunc(f'on("{event}", function(event) {{ {code} }})')
@@ -66,16 +94,16 @@ class JS:
     js.scroll_to_top(f"#{self.id}")
 
 class ElementProp:
-  def __init__(self, func: Callable[[Union[str, Callable[[], str]]], None]):
-    self.prop_dict: Dict[str, str] = {}
-    self._func = func
+  def __init__(self, js, default=None):
+    self.prop_dict: dict[str, str] = default or {}
+    self._js = js
 
   @property
   def text(self) -> str:
     return " ".join([f'{k}="{v}"' for k, v in self.prop_dict.items()])
 
   def refresh(self) -> None:
-    self._func(lambda: f'setAttributes({self.prop_dict})')
+    self._js.update_element("attr", lambda: self.prop_dict)
 
   def includes(self, name: str) -> bool:
     return name in self.prop_dict
@@ -89,7 +117,7 @@ class ElementProp:
       self.prop_dict.pop(name)
     self.refresh()
 
-  def update(self, props: Union[Dict[str, str], str]) -> None:
+  def update(self, props: dict[str, str] | str) -> None:
     if isinstance(props, dict):
       self.prop_dict.update(props)
     elif isinstance(props, str):
@@ -109,17 +137,17 @@ class ElementProp:
     return self.text
 
 class ElementStyle:
-  def __init__(self, func: Callable[[Union[str, Callable[[], str]]], None]):
-    self._func = func
-    self.style_dict: Dict[str, str] = {}
+  def __init__(self, js, default=None):
+    self._js = js
+    self.style_dict: dict[str, str] = default or {}
 
   @property
   def text(self) -> str:
     return ";".join([f"{k}: {v}" for k, v in self.style_dict.items()])
 
   def refresh(self) -> None:
-    self._func(lambda: f"style.cssText = '{self.text}'")
-  
+    self._js.set_val("style.cssText", lambda: self.text)
+
   def includes(self, name) -> bool:
     return name in self.style_dict
 
@@ -132,7 +160,7 @@ class ElementStyle:
       self.style_dict.pop(name)
     self.refresh()
 
-  def update(self, style: Union[Dict[str, str], str]) -> None:
+  def update(self, style: dict[str, str] | str) -> None:
     if isinstance(style, dict):
       self.style_dict.update(style)
     elif isinstance(style, str):
@@ -151,21 +179,21 @@ class ElementStyle:
     return self.text
 
 class ElementClass:
-  def __init__(self, func: Callable[[Union[str, Callable[[], str]]], None]):
-    self._func = func
-    self.class_list: List[str] = []
+  def __init__(self, js, default=None):
+    self._js = js
+    self.class_list: list[str] = default or []
 
   @property
   def text(self) -> str:
     return " ".join(self.class_list)
 
   def refresh(self) -> None:
-    self._func(lambda: f"className = '{self.text}'")
+    self._js.set_val("className", lambda: self.text)
 
   def includes(self, name: str) -> bool:
     return name in self.class_list
 
-  def _normalize(self, *names: str) -> List[str]:
+  def _normalize(self, *names: str) -> list[str]:
     # Split and flatten space-separated class names
     return [cls for name in names for cls in name.split()]
 
@@ -188,6 +216,21 @@ class ElementClass:
       else:
         self.class_list.append(cls)
     self.refresh()
+  
+  def replace(self, old: str, new: str) -> None:
+    old_classes = self._normalize(old)
+    new_classes = self._normalize(new)
+
+    self.class_list = [
+      cs for cs in self.class_list
+      if cs not in old_classes
+    ]
+
+    for cs in new_classes:
+      if cs not in self.class_list:
+        self.class_list.append(cs)
+
+    self.refresh()
 
   def clear(self) -> None:
     self.class_list.clear()
@@ -197,14 +240,21 @@ class ElementClass:
     return self.text
 
 class Element:
-  def __init__(self, *children: Any, tag: str = "div"):
+  def __init__(
+    self,
+    *children: Any,
+    tag: str = "div",
+    style: dict | None = None,
+    attrs: dict | None = None,
+    class_list: list | None = None
+  ):
     self._js = JS()
     self.tag = tag
-    self.cls = ElementClass(self._js.func)
-    self.style = ElementStyle(self._js.func)
-    self.prop = ElementProp(self._js.func)
-    self.children: List[Any] = list(children)
-    
+    self.cls = ElementClass(self._js, class_list)
+    self.style = ElementStyle(self._js, style)
+    self.prop = ElementProp(self._js, attrs)
+    self.children: list[Any] = list(children)
+
     self._events = Events()
 
   @property
@@ -213,8 +263,8 @@ class Element:
 
   @property
   def selector(self) -> str:
-    return f"#{self.id}"
-  
+    return self._js.selector
+
   @property
   def injected(self):
     return self._js.is_injected
@@ -222,7 +272,7 @@ class Element:
   def on(self, event: str, handler: Callable) -> None:
     self._events.on(event, handler)
   
-  def bind(self, event: str, code: Union[str, List]) -> None:
+  def bind(self, event: str, code: str | list) -> None:
     self._js.on(event, code)
 
   def scroll_to_top(self) -> None:
@@ -237,7 +287,7 @@ class Element:
 
   def inner_text(self, text: str) -> str:
     self.children = [text]
-    js.text(self.selector, text)
+    self._js.update_element("text", text)
     return text
 
   def replace(self, *elements: Any) -> 'Element':
@@ -291,6 +341,10 @@ class Element:
     self.cls.toggle(name)
     return self
 
+  def replace_class(self, old_name: str, new_name: str) -> 'Element':
+    self.cls.replace(old_name, new_name)
+    return self
+
   def includes_style(self, name: str) -> bool:
     return self.style.includes(name)
 
@@ -302,7 +356,7 @@ class Element:
     self.style.remove(name)
     return self
 
-  def update_style(self, style: Union[Dict[str, str], str]) -> 'Element':
+  def update_style(self, style: dict[str, str] | str) -> 'Element':
     self.style.update(style)
     return self
   
@@ -319,13 +373,6 @@ class Element:
     else:
       raise Exception("Unexpected child type")
 
-  def deprecated__code__(self, injecting: bool = False) -> str:
-    self._js._injected = injecting
-    content = "".join([self._parse_element(child, injecting) for child in self.children if child is not None])
-    if self.tag in VOID_TAGS:
-      return f'<{self.tag} id="{self.id}" class="{self.cls.text}" style="{self.style.text}" {self.prop.text} />'
-    return f'<{self.tag} id="{self.id}" class="{self.cls.text}" style="{self.style.text}" {self.prop.text}>{content}</{self.tag}>'
-
   def __code__(self, injecting: bool = False) -> str:
     self._js._injected = injecting
   
@@ -341,7 +388,7 @@ class Element:
       f'style="{self.style.text}"' if self.style.text else '',
       self.prop.text  # Assume it's already a string or empty
     ]
-  
+
     # Final cleaned attribute string
     attr_text = ' '.join(filter(None, attrs)).strip()
   
@@ -353,7 +400,7 @@ class Element:
   def __str__(self) -> str:
     return self.__code__()
 
-  def __call__(self, element: Union[bool, 'Element'] = True) -> str:
+  def __call__(self, element: bool | Any = True) -> str:
     if isinstance(element, bool):
       return self.__code__(element)
     elif isinstance(element, Element):
@@ -367,7 +414,7 @@ class Template:
   def __getattr__(self, name: str) -> Any:
     return getattr(self.child, name)
 
-def render(element: Union[str, Element]) -> str:
+def render(element: str | Element) -> str:
   if isinstance(element, str):
     return Element(str(element)).__code__(True)
   elif isinstance(element, Element):

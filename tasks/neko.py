@@ -1,5 +1,6 @@
 import os
 import sys
+import flx
 import json
 import shlex
 import signal
@@ -10,7 +11,6 @@ from time import sleep
 from pathlib import Path
 from random import choice
 
-import flx
 from flx.app import JApp
 from flx import js, panel
 from flx.lib.process import sh
@@ -138,7 +138,7 @@ def get_file_icon(script: Path) -> str:
     icon_path = script / "neko-icon.svg"
     if icon_path.exists():
       return read_text(icon_path, False)
-    return DIR_ICONS.get(script.name, '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path fill="currentColor" fill-opacity="0" stroke-dasharray="64" stroke-dashoffset="64" d="M12 7h8c0.55 0 1 0.45 1 1v10c0 0.55 -0.45 1 -1 1h-16c-0.55 0 -1 -0.45 -1 -1v-11Z"><animate fill="freeze" attributeName="fill-opacity" begin="0.8s" dur="0.15s" values="0;0.3"/><animate fill="freeze" attributeName="stroke-dashoffset" dur="0.6s" values="64;0"/></path><path d="M12 7h-9v0c0 0 0.45 0 1 0h6z" opacity="0"><animate fill="freeze" attributeName="d" begin="0.6s" dur="0.2s" values="M12 7h-9v0c0 0 0.45 0 1 0h6z;M12 7h-9v-1c0 -0.55 0.45 -1 1 -1h6z"/><set fill="freeze" attributeName="opacity" begin="0.6s" to="1"/></path></g></svg>')
+    return DIR_ICONS.get(script.name.lower(), '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path fill="currentColor" fill-opacity="0" stroke-dasharray="64" stroke-dashoffset="64" d="M12 7h8c0.55 0 1 0.45 1 1v10c0 0.55 -0.45 1 -1 1h-16c-0.55 0 -1 -0.45 -1 -1v-11Z"><animate fill="freeze" attributeName="fill-opacity" begin="0.8s" dur="0.15s" values="0;0.3"/><animate fill="freeze" attributeName="stroke-dashoffset" dur="0.6s" values="64;0"/></path><path d="M12 7h-9v0c0 0 0.45 0 1 0h6z" opacity="0"><animate fill="freeze" attributeName="d" begin="0.6s" dur="0.2s" values="M12 7h-9v0c0 0 0.45 0 1 0h6z;M12 7h-9v-1c0 -0.55 0.45 -1 1 -1h6z"/><set fill="freeze" attributeName="opacity" begin="0.6s" to="1"/></path></g></svg>')
   else:
     return SCRIPT_ICONS.get(script.suffix, "<div>🤔</div>")
 
@@ -147,14 +147,16 @@ def scripts_list(path: str | Path, suffixes: list[str]) -> list[Path]:
   if not path.exists() or not path.is_dir():
     return []
 
-  return sorted([
-    item for item in path.iterdir()
-    if (
-      not item.name.startswith("_") and 
-      (item.is_dir() or (item.is_file() and item.suffix in suffixes))
-    )
-  ])
-
+  return sorted(
+    [
+      item for item in path.iterdir()
+      if (
+        not item.name.startswith("_")
+        and (item.is_dir() or (item.is_file() and item.suffix in suffixes))
+      )
+    ],
+    key=lambda item: (not item.is_dir(), item.name.lower())
+  )
 
 class Neko(JApp):
   def init(self) -> None:
@@ -311,7 +313,9 @@ class Neko(JApp):
     
     # clearing panel
     panel.clear(True)
-    js.run_code(f"""runningScript = 'neko "{clean(str(script_name))}"' ;setSubTaskName('{script_name.name}')""")
+
+    js.func("setScript", str(script_name))
+    js.func("setSubTaskName", script_name.name)
 
     run_script(script_name, *args)
   

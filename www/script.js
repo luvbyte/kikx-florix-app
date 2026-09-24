@@ -1,5 +1,6 @@
 const kikxApp = new kikxSdk.createClientApp();
-const tasker = new kikxSdk.TaskerService(kikxApp);
+const _tasker = new kikxSdk.TaskerService(kikxApp);
+const _invoker = new kikxSdk.Invoker(kikxApp);
 
 let mainTask = "neko";
 
@@ -188,8 +189,8 @@ function copyText(text) {
 }
 
 // App Invoke
-function invoke(event, payload = {}) {
-  kikxApp.system.invoke(event, payload);
+function invoke(action, payload) {
+  _invoker._invoke(action, payload);
 }
 
 // Alert
@@ -200,25 +201,137 @@ function notify(message, type = "info", priority = "normal") {
   });
 }
 
-// value, text, html, append
+// Update element
 function updateElement(selector, content, tp) {
-  el = $(selector);
+  const el = $(selector);
+
   switch (tp) {
     case "value":
       el.val(content);
       break;
+
     case "text":
       el.text(content);
       break;
+
+    case "html":
+      el.html(content);
+      break;
+
     case "append":
       el.append(content);
       break;
-    case "html":
-      el.html(content);
+
+    case "prepend":
+      el.prepend(content);
+      break;
+
+    case "before":
+      el.before(content);
+      break;
+
+    case "after":
+      el.after(content);
+      break;
+
+    case "attr":
+      el.attr(content);
+      break;
+
+    case "removeAttr":
+      el.removeAttr(content);
+      break;
+
+    case "prop":
+      el.prop(content);
+      break;
+
+    case "css":
+      el.css(content);
+      break;
+
+    case "addClass":
+      el.addClass(content);
+      break;
+
+    case "removeClass":
+      el.removeClass(content);
+      break;
+
+    case "toggleClass":
+      el.toggleClass(content);
+      break;
+
+    case "show":
+      el.show();
+      break;
+
+    case "hide":
+      el.hide();
+      break;
+
+    case "toggle":
+      el.toggle();
+      break;
+
+    case "empty":
+      el.empty();
+      break;
+
+    case "remove":
+      el.remove();
       break;
   }
 }
 
+// Get target
+function getTarget(selector) {
+  if (!selector) return window;
+
+  return document.getElementById(selector);
+}
+
+// Call function with args
+function callFunc(selector, expression, args = []) {
+  let obj = getTarget(selector);
+
+  if (!obj) return null;
+
+  const parts = expression.split(".");
+
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    const value = obj[part];
+
+    if (typeof value === "function") {
+      obj = value.apply(obj, args);
+    } else {
+      obj = value;
+    }
+  }
+
+  return obj;
+}
+
+// Set value
+function setVal(selector, expression, val) {
+  let obj = getTarget(selector);
+
+  if (!obj) return null;
+
+  const parts = expression.split(".");
+
+  for (let i = 0; i < parts.length - 1; i++) {
+    obj = obj[parts[i]];
+  }
+
+  const key = parts[parts.length - 1];
+  obj[key] = val;
+
+  return obj;
+}
+
+// Eval code
 function codeEval(code) {
   try {
     eval(code);
@@ -248,6 +361,10 @@ const setSubTaskName = (name = null) => {
   }
 };
 
+const setScript = name => {
+  runningScript = `neko "${name}"`;
+};
+
 function _runFunc(name, args) {
   const exposed = {
     askInput,
@@ -255,6 +372,8 @@ function _runFunc(name, args) {
     invoke,
     notify,
     codeEval,
+    setScript,
+    setSubTaskName,
     //
     setConfig,
     setRawOutputPanel,
@@ -264,7 +383,10 @@ function _runFunc(name, args) {
     hideInputPanel,
     scrollToTop,
     scrollToBottom,
-    updateElement
+    updateElement,
+    // Js
+    callFunc,
+    setVal
   };
   try {
     return (exposed[name] || (() => {}))(...args);
@@ -357,7 +479,7 @@ async function runFlorixTask(cmd) {
   let errorFlag = false;
   let successFlag = false;
 
-  currentTask = await tasker.doTask(cmd, ({ status, output }) => {
+  currentTask = await _tasker.doTask(cmd, ({ status, output }) => {
     switch (status) {
       case "started": // on running
         successFlag = true;
@@ -422,7 +544,7 @@ function killTask() {
 }
 
 function _sendUserInput() {
-  const cmd = $taskInputBox.val();
+  const cmd = $taskInputBox.val().trim();
   if (!cmd || AppConfig.blockUserInput) return;
 
   sendInput(cmd);
