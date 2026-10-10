@@ -73,4 +73,3 @@ if options["metrics_port"]:
 panel.clear(force=True)
 
 PTYProcess(args, print).run()
-

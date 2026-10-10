@@ -1,10 +1,13 @@
 import json
 from time import sleep
 
+from flx.js import update_element
+
 from flx.ui import Animate, Div
 from flx.lib.crypto import generate_uuid
 from flx.lib.utils import sanitize_html, clean
 
+from flx.widgets.fs import FSWrapper
 
 # Pages Console
 class ConsolePage:
@@ -406,9 +409,12 @@ class FormPage(Page):
 
     self.uid = generate_uuid()
     self.title: str | None = title
-    self.fields: list[dict] = []
+    self.fields: dict = {}
     self.values = {}
-  
+
+  def get_field_by_name(self, name: str) -> dict:
+    return self.fields[name]
+
   def _add(
     self,
     *,
@@ -422,7 +428,7 @@ class FormPage(Page):
     options: dict[str, str] | None = None,
     attrs: dict[str, str | int | float] | None = None,
   ) -> "FormPage":
-    self.fields.append({
+    self.fields[name] = {
       "name": name,
       "label": label,
       "type": field_type,
@@ -432,7 +438,7 @@ class FormPage(Page):
       "required": required,
       "options": options or {},
       "attrs": attrs or {},
-    })
+    }
     return self
   
   def add_text(
@@ -680,6 +686,35 @@ class FormPage(Page):
       required=required,
       options=options,
     )
+  
+  def add_path(
+    self,
+    name: str,
+    label: str,
+    type: str = "file",
+    info: str | None = None,
+    placeholder: str = "",
+    value: list[str] | str | None = None,
+    required: bool = False,
+    path: str | None = None,
+    title: str | None = None,
+    accept: str = "*"
+  ) -> "FormPage":
+    return self._add(
+      name=name,
+      label=label,
+      info=info,
+      field_type="path",
+      placeholder=placeholder,
+      value=value,
+      required=required,
+      options={
+        "type": type,
+        "path": path,
+        "title": title,
+        "accept": accept
+      }
+    )
 
   def get_header(self):
     if not self.title:
@@ -708,7 +743,7 @@ class FormPage(Page):
     """ if info_val else ""
 
     return f"""
-      <div class="px-3 py-1">
+      <div class="px-3 py-1 relative">
         <label class="block text-white/80 text-sm mb-1 font-heading">
           {self.to_text(field["label"])}  {'*' if required else ''}
         </label>
@@ -821,10 +856,56 @@ class FormPage(Page):
       </span>
     """)
 
+  def render_path(self, field) -> str:
+    extra_attrs = self.get_attrs(field)
+    options = field["options"]
+    value = field["value"]
+
+    if options["type"] in { "file", "directory" }:
+      return self.render_element(field, f"""
+        <input
+          id="{self.uid}_{field["name"]}"
+          onclick="sendInput('__path__{clean(field["name"])}')"
+          data-field="{field["name"]}"
+          data-required="{"true" if field["required"] else "false"}"
+          type="{field["type"]}"
+          value="{self.to_text(value)}"
+          placeholder="{self.to_text(field["placeholder"])}"
+          autocomplete="off"
+          autocapitalize="off"
+          autocorrect="off"
+          readonly
+          spellcheck="false"
+          {extra_attrs}
+          class="w-full rounded bg-white/10 border border-white/20 p-2 text-white placeholder-white/40 outline-none focus:border-pink-400">
+        """)
+
+    elif options["type"] == "files":
+      return self.render_element(field, f"""
+       <textarea
+        id="{self.uid}_{field["name"]}"
+        onclick="sendInput('__path__{clean(field["name"])}')"
+        data-field="{field["name"]}"
+        data-files="true"
+        data-required="{"true" if field["required"] else "false"}"
+        data-required="true"
+        autocomplete="off"
+        autocapitalize="off"
+        autocorrect="off"
+        spellcheck="false"
+        readonly
+        placeholder="{self.to_text(field["placeholder"])}"
+        {extra_attrs}
+        class="w-full min-h-32 resize-y rounded bg-white/10 border border-white/20 p-2 text-white placeholder-white/40 outline-none focus:border-pink-400"
+        >{"\n\n".join([self.to_text(v) for v in value])}</textarea>
+      """)
+
+    return ""
+
   def render_fields(self) -> list[str]:
     html = []
 
-    for field in self.fields:
+    for field in self.fields.values():
       match field["type"]:
         case "textarea":
           html.append(self.render_textarea(field))
@@ -834,6 +915,8 @@ class FormPage(Page):
           html.append(self.render_checkbox(field))
         case "color":
           html.append(self.render_color(field))
+        case "path":
+          html.append(self.render_path(field))
         case _:
           html.append(self.render_input(field))
 
@@ -868,6 +951,15 @@ class FormPage(Page):
                   e.focus();
                   return;
                 }}
+                
+                if (e.dataset.required === 'true' && !e.value) {{
+                  e.focus();
+                  return;
+                }}
+                
+                if (e.dataset.files === 'true') {{
+                  values[e.dataset.field] = e.value.split('\\n\\n').filter(Boolean);                 continue;
+                }}
             
                 values[e.dataset.field] = e.type === 'checkbox'
                   ? e.checked
@@ -884,6 +976,41 @@ class FormPage(Page):
     """
 
     return self._render(html)
+  
+  def ask_path(self, field, el):
+    wrapper = FSWrapper()
+
+    path_type, path, title, accept = field["options"].values()
+
+    if path_type == "file":
+      result = wrapper.ask_file(path, title or "Select file", accept)
+    elif path_type == "files":
+      result = wrapper.ask_files(path, title or "Select files", accept)
+    elif path_type == "directory":
+      result = wrapper.ask_directory(path, title or "Select directory", accept)
+    else:
+      return None
+    
+    # If cancel dont set anything
+    if result is None:
+      return None
+    
+    # Converting Path to safe string
+    result = [self.to_text(p) for p in result]
+    
+    # If not multiple files then pop
+    if path_type != "files":
+      result = result.pop()
+
+    # str, list
+    field["value"] = result
+    
+    if path_type != "files":
+      update_element(f"#{self.uid}_{field['name']}", {
+        "value": "\n".join(result)
+      }, "attr")
+    else:
+      update_element(f"#{self.uid}_{field['name']}", "\n\n".join(result), "text")
 
   def display(self, console, inject=None) -> dict[str, str]:
     el = inject or console
@@ -891,17 +1018,24 @@ class FormPage(Page):
     el.clear()
     el.append(self.render())
 
-    result = input()
+    while True:
+      result = input()
 
-    el.clear()
+      if result.startswith("__path__"):
+        field = self.get_field_by_name(result[8:])
+        self.ask_path(field, el)
 
-    if result == "__cancel__":
-      return None
-
-    result = json.loads(result)
-
-    self.values.update(result)
-    return result
+        continue
+  
+      el.clear()
+      
+      if result == "__cancel__":
+        return None
+  
+      result = json.loads(result)
+  
+      self.values.update(result)
+      return result
 
 # --------- No Interaction Pages
 

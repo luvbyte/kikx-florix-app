@@ -22,6 +22,8 @@ class FileSystem(JApp):
 
     self.list_view: bool = True
     self.close_flag: bool = False
+    
+    self.effect = None
 
     title_head = "Open "
     if self.directory:
@@ -44,7 +46,7 @@ class FileSystem(JApp):
           </div>
         </div>
       </div>
-    """)).add_class("absolute w-full h-full insert-0 flex flex-col bg-slate-800")
+    """), effect=self.effect).add_class("absolute w-full h-full insert-0 flex flex-col bg-slate-800")
 
     self.files_div = Div().add_class("flex-1 flex flex-col overflow-hidden")
     self.frame.append(self.files_div)
@@ -160,7 +162,7 @@ class FileSystem(JApp):
 
     self.startloop()
     
-    self.frame._js.jfunc("remove()")
+    self.frame._js.remove()
 
     if self.close_flag:
       return None

@@ -1,3 +1,7 @@
+// ===============================
+// Florix JS Runtime
+// ===============================
+
 const kikxApp = new kikxSdk.createClientApp();
 const _tasker = new kikxSdk.TaskerService(kikxApp);
 const _invoker = new kikxSdk.Invoker(kikxApp);
@@ -59,7 +63,8 @@ const AppConfig = {
   blockUserInput: true, // Blocks user input
   blockUserClear: true, // clear button at top
 
-  autoAppendScroll: true // auto scrolls on append text
+  autoAppendScroll: true, // auto scrolls on append text
+  sendMessageEvents: false // Send post message events as input
 };
 
 // ========== CONFIG HELPERS ==========
@@ -100,6 +105,10 @@ const setRawOutputPanel = selector => {
   rawOutputPanel = $(selector);
 };
 
+const setSendMessageEvents = (enable = false) => {
+  AppConfig.sendMessageEvents = enable;
+};
+
 // After every script complete set defaults
 const setAppDefaultConfig = () => {
   setRawOutput(true);
@@ -112,8 +121,10 @@ const setAppDefaultConfig = () => {
   blockUserClear(true);
   blockUserKillTask(false);
   setAutoAppendScroll(true);
+  setSendMessageEvents(false);
 
   resetPanelClass();
+
   rawOutputPanel = $panel;
   _deepCleanObject(tempObjects);
 };
@@ -127,7 +138,8 @@ function setConfig(name, enable) {
     setRawOutput,
     blockUserKillTask,
     setRawOutputHTML,
-    setAutoAppendScroll
+    setAutoAppendScroll,
+    setSendMessageEvents
   };
 
   return (maps[name] || (() => {}))(Boolean(enable));
@@ -479,7 +491,10 @@ async function runFlorixTask(cmd) {
   let errorFlag = false;
   let successFlag = false;
 
-  currentTask = await _tasker.doTask(cmd, ({ status, output }) => {
+  currentTask = _tasker.createTask(cmd);
+  await currentTask.init({ canSudo: true });
+
+  currentTask.on(({ status, output }) => {
     switch (status) {
       case "started": // on running
         successFlag = true;
@@ -509,8 +524,11 @@ async function runFlorixTask(cmd) {
         $("#task-name-input").show();
         if (!errorFlag) $taskTitle.css("color", "#71dd8a");
 
-        currentTask = null;
         scrollToBottom();
+
+        // Cleanup
+        _tasker.removeTask(currentTask);
+        currentTask = null;
         break;
 
       case "output":
@@ -528,14 +546,14 @@ async function runFlorixTask(cmd) {
         break;
     }
   });
+
+  await currentTask.run();
 }
 
 // Home button
 function runMainTask() {
   runFlorixTask(mainTask);
 }
-
-function reloadScript() {}
 
 function killTask() {
   if (currentTask && !AppConfig.blockUserKillTask) {
@@ -628,6 +646,17 @@ kikxApp.on("ws:onclose", () => {
 });
 
 kikxApp.run(() => {
+  window.addEventListener("message", event => {
+    // Block parent ui events
+    if (event.source === window.parent || !AppConfig.sendMessageEvents) return;
+    // Send as string
+    try {
+      sendInput("!!__message__!!" + JSON.stringify(event.data));
+    } catch (_) {
+      // ignore errors
+    }
+  });
+
   runFlorixTask(mainTask);
 });
 

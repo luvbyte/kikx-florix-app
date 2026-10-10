@@ -1,4 +1,6 @@
 from .ui import Pre, Div, Animate
+from flx.ui.elements import IFrame
+
 
 
 B1 = Animate(Pre(Div(r"""
@@ -38,17 +40,6 @@ B4 = Animate(Pre(Div(r"""
 """)), "lightSpeedInLeft")
 B4.add_class("w-full h-full flex justify-start items-end text-sm")
 
-B5 = Animate(Pre(Div(r"""┊    ┊    ┊    ┊    ┊    ┊
-┊    ┊    ┊    ┊    ┊    💗
-┊    ┊    ┊    ┊    ❤️    X
-┊    ┊    ┊   💛     I  
-┊    ┊   💚    R  
-┊   💙    O  
-💜   L  
-F 
-""")), "fadeInDownBig")
-B5.add_class("w-full h-full flex justify-center items-start text-sm")
 
-
-BANNERS = [B1, B3, B2, B5]
+BANNERS = [B1, B3, B2, B4]
 

@@ -60,15 +60,12 @@ console.append(Div("""
 try:
   short_url = shorten_tinyurl(url)
 except Exception as e:
-  console.clear()
-  console.print("Failed to create short link:")
-  console.print(str(e))
-  exit(1)
+  raise Exception("Failed to create short link:", e)
 
 console.clear()
 
 console.print("Link Created", padding=3, center=True, bg="purple-400/40")
-console.wg.copy_box(short_url, short_url)
+console.wg.copy_text(short_url, short_url)
 
 console.print(url, padding=2, bg="blue-400/40")
 

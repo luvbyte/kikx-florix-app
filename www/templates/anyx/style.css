@@ -1,0 +1,105 @@
+@font-face {
+  font-family: "Cause";
+  src: url("../../fonts/Cause-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Jost";
+  src: url("../../fonts/Jost-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
+
+.font-heading {
+  font-family: "Jost", sans-serif;
+}
+
+.font-body {
+  font-family: "Cause", sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  font-family: "Cause", sans-serif;
+  color: white;
+  line-height: 1;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button,
+input,
+textarea,
+select {
+  margin: 0;
+}
+
+img,
+svg,
+video,
+canvas {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+ul,
+ol {
+  list-style: none;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+figure,
+blockquote,
+dl,
+dd {
+  margin: 0;
+}
+
+iframe {
+  margin: 0;
+  border: 0;
+}
+
+.fscreen {
+  height: 100vh;
+  width: 100%;
+}
+
+.panel-screen {
+  height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}

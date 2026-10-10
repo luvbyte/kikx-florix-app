@@ -156,7 +156,7 @@ def parse_paths(text: str) -> dict[str, list[str]]:
 # ---------------- Device
 class Config:
   def __init__(self) -> None:
-    self.path: Path = ensure_dir(HOME_PATH / "etc/xadb")
+    self.path: Path = ensure_dir(HOME_PATH / "etc/florix/xadb")
     self.pulls_file_path: Path = Path(__file__).parent / "_pulls.xadb"
 
   def get_pulls_list(self) -> dict:
@@ -312,7 +312,13 @@ class XADB:
         future.result()
 
   def start(self) -> None:
-    scr.pre_center('<svg xmlns="http://www.w3.org/2000/svg" class="animate-pulse" width="46" height="46" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" fill-rule="evenodd" d="M12 1a1.5 1.5 0 0 0-1.5 1.5V4a1.5 1.5 0 0 0 3 0V2.5A1.5 1.5 0 0 0 12 1m3.5 5.5a1.5 1.5 0 0 1 3 0V8a1.5 1.5 0 0 1-3 0zM5.5 7a1.5 1.5 0 1 1 3 0v4.5a1.5 1.5 0 0 1-3 0zM12 7a1.5 1.5 0 0 0-1.5 1.5v7a1.5 1.5 0 0 0 3 0v-7A1.5 1.5 0 0 0 12 7M2.5 9.75a1.5 1.5 0 0 0-1.5 1.5v1.5a1.5 1.5 0 0 0 3 0v-1.5a1.5 1.5 0 0 0-1.5-1.5m3 6.25a1.5 1.5 0 0 1 3 0v1.5a1.5 1.5 0 0 1-3 0zm6.5 2.5a1.5 1.5 0 0 0-1.5 1.5v1.5a1.5 1.5 0 0 0 3 0V20a1.5 1.5 0 0 0-1.5-1.5m9.5-8.75a1.5 1.5 0 0 0-1.5 1.5v1.5a1.5 1.5 0 0 0 3 0v-1.5a1.5 1.5 0 0 0-1.5-1.5m-6 2.75a1.5 1.5 0 0 1 3 0V17a1.5 1.5 0 0 1-3 0z" clip-rule="evenodd" /></svg>')
+    scr.pre(
+      '<svg xmlns="http://www.w3.org/2000/svg" class="animate-pulse" width="46" height="46" viewBox="0 0 24 24"><path d="M0 0h24v24H0z" fill="none" /><path fill="currentColor" fill-rule="evenodd" d="M12 1a1.5 1.5 0 0 0-1.5 1.5V4a1.5 1.5 0 0 0 3 0V2.5A1.5 1.5 0 0 0 12 1m3.5 5.5a1.5 1.5 0 0 1 3 0V8a1.5 1.5 0 0 1-3 0zM5.5 7a1.5 1.5 0 1 1 3 0v4.5a1.5 1.5 0 0 1-3 0zM12 7a1.5 1.5 0 0 0-1.5 1.5v7a1.5 1.5 0 0 0 3 0v-7A1.5 1.5 0 0 0 12 7M2.5 9.75a1.5 1.5 0 0 0-1.5 1.5v1.5a1.5 1.5 0 0 0 3 0v-1.5a1.5 1.5 0 0 0-1.5-1.5m3 6.25a1.5 1.5 0 0 1 3 0v1.5a1.5 1.5 0 0 1-3 0zm6.5 2.5a1.5 1.5 0 0 0-1.5 1.5v1.5a1.5 1.5 0 0 0 3 0V20a1.5 1.5 0 0 0-1.5-1.5m9.5-8.75a1.5 1.5 0 0 0-1.5 1.5v1.5a1.5 1.5 0 0 0 3 0v-1.5a1.5 1.5 0 0 0-1.5-1.5m-6 2.75a1.5 1.5 0 0 1 3 0V17a1.5 1.5 0 0 1-3 0z" clip-rule="evenodd" /></svg>',
+      justify="center",
+      align="center",
+      text_align="center",
+      height="100%"
+    )
     
     self.selected = self.display_devices()
     pulls = self.display_pulls()

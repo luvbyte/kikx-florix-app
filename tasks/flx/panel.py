@@ -9,16 +9,23 @@ def inject(el):
     js.html("#panel", el)
   else:
     js.html("#panel", render(el))
-    
+
   recursive_emit(el, "injected")
+
 
 def append(el):
   js.append("#panel", render(el))
-  
+
   recursive_emit(el, "injected")
+
 
 def text(el):
   js.text("#panel", el)
 
+
 def clear(force=False):
   js.clear_panel(force=force)
+
+
+def scroll_to_bottom():
+  js.scroll_to_bottom("#panel")

@@ -1,14 +1,17 @@
 from uuid import uuid4
 
 from flx import js
-from flx.lib.utils import Events
+from flx.lib.utils import Events, escape
 
 from typing import Callable, Any
+
+
 
 VOID_TAGS = [
   "area", "base", "br", "col", "embed", "hr", "img", "input",
   "link", "meta", "source", "track", "wbr"
 ]
+
 
 def recursive_emit(element, name):
   if not isinstance(element, (Element, Template)):
@@ -20,6 +23,7 @@ def recursive_emit(element, name):
   events = getattr(element, '_events', None)
   if events:
     events._emit(name)
+
 
 class JS:
   def __init__(self):
@@ -43,13 +47,16 @@ class JS:
 
     js.update_element(self.selector, content, tp)
 
-  def call_func(self, name, content: str | Callable) -> None:
+  def call_func(self, name, *content: str | Callable) -> None:
     if not self.is_injected:
-      return None
+      return
 
-    content = content() if callable(content) else content
-
-    js.call_func(self.id, name, content)
+    content = tuple(
+      value() if callable(value) else value
+      for value in content
+    )
+  
+    js.call_func(self.id, name, *content)
 
   def set_val(self, name, content: str | Callable) -> None:
     if not self.is_injected:
@@ -93,14 +100,22 @@ class JS:
   def scroll_to_top(self) -> None:
     js.scroll_to_top(f"#{self.id}")
 
+
 class ElementProp:
   def __init__(self, js, default=None):
     self.prop_dict: dict[str, str] = default or {}
     self._js = js
-
+  
   @property
   def text(self) -> str:
-    return " ".join([f'{k}="{v}"' for k, v in self.prop_dict.items()])
+    return " ".join(
+      f'{k}="{escape(str(v), quote=True)}"'
+      for k, v in self.prop_dict.items()
+    )
+
+  # @property
+  # def text(self) -> str:
+  #   return " ".join([f'{k}="{v}"' for k, v in self.prop_dict.items()])
 
   def refresh(self) -> None:
     self._js.update_element("attr", lambda: self.prop_dict)
@@ -135,6 +150,7 @@ class ElementProp:
 
   def __str__(self) -> str:
     return self.text
+
 
 class ElementStyle:
   def __init__(self, js, default=None):
@@ -178,10 +194,11 @@ class ElementStyle:
   def __str__(self) -> str:
     return self.text
 
+
 class ElementClass:
   def __init__(self, js, default=None):
     self._js = js
-    self.class_list: list[str] = default or []
+    self.class_list: list[str] = list(dict.fromkeys(default or []))
 
   @property
   def text(self) -> str:
@@ -239,6 +256,7 @@ class ElementClass:
   def __str__(self) -> str:
     return self.text
 
+
 class Element:
   def __init__(
     self,
@@ -250,9 +268,9 @@ class Element:
   ):
     self._js = JS()
     self.tag = tag
-    self.cls = ElementClass(self._js, class_list)
-    self.style = ElementStyle(self._js, style)
-    self.prop = ElementProp(self._js, attrs)
+    self.cls = ElementClass(self._js, default=class_list)
+    self.style = ElementStyle(self._js, default=style)
+    self.prop = ElementProp(self._js, default=attrs)
     self.children: list[Any] = list(children)
 
     self._events = Events()
@@ -391,10 +409,10 @@ class Element:
 
     # Final cleaned attribute string
     attr_text = ' '.join(filter(None, attrs)).strip()
-  
+
     if self.tag in VOID_TAGS:
       return f'<{self.tag} {attr_text} />'
-  
+
     return f'<{self.tag} {attr_text}>{content}</{self.tag}>'
 
   def __str__(self) -> str:
@@ -407,12 +425,14 @@ class Element:
       return self.__code__(element._js._injected)
     raise Exception("Require 'Element or bool' type")
 
+
 class Template:
   def __init__(self, child: Element):
     self.child = child
 
   def __getattr__(self, name: str) -> Any:
     return getattr(self.child, name)
+
 
 def render(element: str | Element) -> str:
   if isinstance(element, str):

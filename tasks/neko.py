@@ -1,32 +1,30 @@
 import os
 import sys
-import flx
-import json
-import shlex
 import signal
 import subprocess
 
 from sys import argv
-from time import sleep
 from pathlib import Path
-from random import choice
 
 from flx.app import JApp
 from flx import js, panel
-from flx.lib.process import sh
 from flx.banners import BANNERS
+from flx.ui import Div, Animate
 from flx.lib.utils import clean, sanitize_html
-from flx.ui import Div, Pre, Center, Animate, Text, Padding, Element
+
+
+
 
 def ensure_dir(path: str) -> str:
   Path(path).mkdir(parents=True, exist_ok=True)
   return path
 
+
 ROOT_PATH = Path(__file__).resolve().parent
 # scripts directory
 SCRIPT_DIRS = [
   ("App", ensure_dir(ROOT_PATH / "etc/nks")),
-  ("Local", ensure_dir(Path(os.environ.get("KIKX_HOME_PATH", ROOT_PATH / "etc/.empty")) / "etc/nks"))
+  ("Local", ensure_dir(Path(os.environ.get("KIKX_HOME_PATH", ROOT_PATH / "etc/.empty")) / "etc/florix/nks"))
 ]
 
 SCRIPTS_DIR_NAME, SCRIPTS_DIR = SCRIPT_DIRS[0]
@@ -38,17 +36,21 @@ SCRIPT_ICONS = {
   ".py": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#0288d1" d="M9.86 2A2.86 2.86 0 0 0 7 4.86v1.68h4.29c.39 0 .71.57.71.96H4.86A2.86 2.86 0 0 0 2 10.36v3.781a2.86 2.86 0 0 0 2.86 2.86h1.18v-2.68a2.85 2.85 0 0 1 2.85-2.86h5.25c1.58 0 2.86-1.271 2.86-2.851V4.86A2.86 2.86 0 0 0 14.14 2zm-.72 1.61c.4 0 .72.12.72.71s-.32.891-.72.891c-.39 0-.71-.3-.71-.89s.32-.711.71-.711"/><path fill="#fdd835" d="M17.959 7v2.68a2.85 2.85 0 0 1-2.85 2.859H9.86A2.85 2.85 0 0 0 7 15.389v3.75a2.86 2.86 0 0 0 2.86 2.86h4.28A2.86 2.86 0 0 0 17 19.14v-1.68h-4.291c-.39 0-.709-.57-.709-.96h7.14A2.86 2.86 0 0 0 22 13.64V9.86A2.86 2.86 0 0 0 19.14 7zM8.32 11.513l-.004.004l.038-.004zm6.54 7.276c.39 0 .71.3.71.89a.71.71 0 0 1-.71.71c-.4 0-.72-.12-.72-.71s.32-.89.72-.89"/></svg>',
   ".lua": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path fill="#42a5f5" d="M30 6a3.86 3.86 0 0 1-1.167 2.833a4.024 4.024 0 0 1-5.666 0A3.86 3.86 0 0 1 22 6a3.86 3.86 0 0 1 1.167-2.833a4.024 4.024 0 0 1 5.666 0A3.86 3.86 0 0 1 30 6m-9.208 5.208A10.6 10.6 0 0 0 13 8a10.6 10.6 0 0 0-7.792 3.208A10.6 10.6 0 0 0 2 19a10.6 10.6 0 0 0 3.208 7.792A10.6 10.6 0 0 0 13 30a10.6 10.6 0 0 0 7.792-3.208A10.6 10.6 0 0 0 24 19a10.6 10.6 0 0 0-3.208-7.792m-1.959 7.625a4.024 4.024 0 0 1-5.666 0a4.024 4.024 0 0 1 0-5.666a4.024 4.024 0 0 1 5.666 0a4.024 4.024 0 0 1 0 5.666"/></svg>',
   ".txt": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><g fill="none" stroke="#cad3f5" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"><path d="M13.5 6.5v6a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h4.01"/><path d="m8.5 1.5l5 5h-4a1 1 0 0 1-1-1zm-3 10h5m-5-3h5m-5-3h1"/></g></svg>',
+  ".js": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><path d="M0 0h256v256H0z" fill="none" /><g fill="none"><rect width="256" height="256" fill="#f0db4f" rx="60" /><path fill="#323330" d="m67.312 213.932l19.59-11.856c3.78 6.701 7.218 12.371 15.465 12.371c7.905 0 12.889-3.092 12.889-15.12v-81.798h24.058v82.138c0 24.917-14.606 36.259-35.916 36.259c-19.245 0-30.416-9.967-36.087-21.996m85.07-2.576l19.588-11.341c5.157 8.421 11.859 14.607 23.715 14.607c9.969 0 16.325-4.984 16.325-11.858c0-8.248-6.53-11.17-17.528-15.98l-6.013-2.579c-17.357-7.388-28.871-16.668-28.871-36.258c0-18.044 13.748-31.792 35.229-31.792c15.294 0 26.292 5.328 34.196 19.247l-18.731 12.029c-4.125-7.389-8.591-10.31-15.465-10.31c-7.046 0-11.514 4.468-11.514 10.31c0 7.217 4.468 10.139 14.778 14.608l6.014 2.577c20.449 8.765 31.963 17.699 31.963 37.804c0 21.654-17.012 33.51-39.867 33.51c-22.339 0-36.774-10.654-43.819-24.574" /></g></svg>',
+  ".html": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><path d="M0 0h256v256H0z" fill="none" /><g fill="none"><rect width="256" height="256" fill="#e14e1d" rx="60" /><path fill="#fff" d="m48 38l8.61 96.593h110.71l-3.715 41.43l-35.646 9.638l-35.579-9.624l-2.379-26.602H57.94l4.585 51.281l65.427 18.172l65.51-18.172l8.783-98.061H85.824l-2.923-32.71h122.238L208 38z" /><path fill="#ebebeb" d="M128 38H48l8.61 96.593H128v-31.938H85.824l-2.923-32.71H128zm0 147.647l-.041.014l-35.579-9.624l-2.379-26.602H57.94l4.585 51.281l65.427 18.172l.049-.014z" /></g></svg>'
 }
 
 DIR_ICONS = {
   "docs": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><g fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="#cad3f5" d="m1.875 8l.686-2.743a1 1 0 0 1 .97-.757h10.938a1 1 0 0 1 .97 1.243l-.315 1.26M6 13.5H2.004A1.5 1.5 0 0 1 .5 12V3.5a1 1 0 0 1 1-1h5a1 1 0 0 1 1 1v1" stroke-width="1"/><path stroke="#8aadf4" d="M8.5 14.5v-5a1 1 0 0 1 1-1h6v6m-6-1h6v2h-6a1 1 0 1 1 0-2" stroke-width="1"/></g></svg>'
 }
 
+
 def read_text(path: Path, sanitize=True):
   if sanitize:
     return sanitize_html(path.read_text(encoding="utf-8"))
   else:
     return path.read_text(encoding="utf-8")
+
 
 class Utils:
   @staticmethod
@@ -63,60 +65,41 @@ class Utils:
     
     raise ValueError(f"Suffix '{target_suffix}' not found in path '{full_path}'")
 
-# can support absolute files
-def run_script(path: Path, *args) -> None | str:
-  # support for binary file
-  if path.suffix == "":
-    binary_path = str(path)
 
-    sh(f"chmod +x {binary_path}").run()
-    process = sh(binary_path).pipe(stderr=subprocess.PIPE)
+def _run_script(path: Path, *args) -> None:
+  runner = Path(__file__).resolve().parent / "anyx.py"
+
+  process = subprocess.Popen(
+    [
+      sys.executable,
+      "-u",
+      str(runner),
+      str(path),
+    ],
+    stdout=sys.stdout,
+    stdin=sys.stdin,
+    stderr=subprocess.PIPE,
+  )
+  try:
+    process.wait()
+  finally:
+    # setting default after complete and hiding input
+    js.set_default_config()
+    js.hide_input_panel()
+
+    if process.poll() is None:
+      os.killpg(process.pid, signal.SIGTERM)
     if process.returncode != 0:
-      print(f"Error({process.returncode}): {process.error()}")
-  elif path.suffix == ".sh":
-    # can parse html code
-    script_path = (path).as_posix()
+      raise Exception(f"ProcessError({process.returncode}): {process.stderr.read().decode('utf-8').strip()}")
 
-    process = sh(f"bash {script_path}").pipe(stderr=subprocess.PIPE)
-    if process.returncode != 0:
-      print(f"Error({process.returncode}): {process.error()}")
-  # python file
-  elif path.suffix == ".py":
-    runner = Path(__file__).resolve().parent / "pyx.py"
 
-    process = subprocess.Popen(
-      [
-        sys.executable,
-        "-u",
-        str(runner),
-        str(path),
-      ],
-      stdout=sys.stdout,
-      stdin=sys.stdin,
-      stderr=subprocess.PIPE,
-    )
-    try:
-      process.wait()
-    finally:
-      if process.poll() is None:
-        os.killpg(process.pid, signal.SIGTERM)
-      if process.returncode != 0:
-        print(f"Error({process.returncode}): {process.stderr.read().decode('utf-8').strip()}")
-  # lua file simple
-  elif path.suffix == ".lua":
-    from flx.console import Console
-    from lupa import LuaRuntime
+def run_script(path: Path, *args) -> None:
+  try:
+    _run_script(path)
+  except Exception as e:
+    panel.clear(force=True)
+    print(e)
 
-    runtime = LuaRuntime()
-    scr = Console()
-
-    runtime.globals().scr = scr
-    runtime.globals().print = scr.print
-
-    with open(path, "r") as file:
-      runtime.execute(file.read())
-  else:
-    raise Exception(f"Cant run '{path.suffix}' file")
 
 def set_next_scripts_path():
   global SCRIPTS_DIR
@@ -132,6 +115,7 @@ def set_next_scripts_path():
     # SCRIPTS_DIR not found in SCRIPT_DIRS
     SCRIPTS_DIR_NAME, SCRIPTS_DIR = SCRIPT_DIRS[0]
 
+
 # Returns file icon svg
 def get_file_icon(script: Path) -> str:
   if script.is_dir():
@@ -141,6 +125,7 @@ def get_file_icon(script: Path) -> str:
     return DIR_ICONS.get(script.name.lower(), '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path fill="currentColor" fill-opacity="0" stroke-dasharray="64" stroke-dashoffset="64" d="M12 7h8c0.55 0 1 0.45 1 1v10c0 0.55 -0.45 1 -1 1h-16c-0.55 0 -1 -0.45 -1 -1v-11Z"><animate fill="freeze" attributeName="fill-opacity" begin="0.8s" dur="0.15s" values="0;0.3"/><animate fill="freeze" attributeName="stroke-dashoffset" dur="0.6s" values="64;0"/></path><path d="M12 7h-9v0c0 0 0.45 0 1 0h6z" opacity="0"><animate fill="freeze" attributeName="d" begin="0.6s" dur="0.2s" values="M12 7h-9v0c0 0 0.45 0 1 0h6z;M12 7h-9v-1c0 -0.55 0.45 -1 1 -1h6z"/><set fill="freeze" attributeName="opacity" begin="0.6s" to="1"/></path></g></svg>')
   else:
     return SCRIPT_ICONS.get(script.suffix, "<div>🤔</div>")
+
 
 def scripts_list(path: str | Path, suffixes: list[str]) -> list[Path]:
   path = Path(path)
@@ -157,6 +142,7 @@ def scripts_list(path: str | Path, suffixes: list[str]) -> list[Path]:
     ],
     key=lambda item: (not item.is_dir(), item.name.lower())
   )
+
 
 class Neko(JApp):
   def init(self) -> None:
@@ -302,7 +288,7 @@ class Neko(JApp):
       self.display_scripts(script_path, str(rel_path))
     elif script_path.exists():
       if script_path.suffix == ".txt":
-        self.top_box.replace(Animate(Text(read_text(script_path))))
+        self.top_box.replace(Animate(Div(read_text(script_path))))
         self.top_box.scroll_to_top()
       else:
         self.run_script(script_path)
@@ -318,10 +304,6 @@ class Neko(JApp):
     js.func("setSubTaskName", script_name.name)
 
     run_script(script_name, *args)
-  
-    # setting default after complete and hiding input
-    js.set_default_config()
-    js.hide_input_panel()
 
     self.create_end_buttons()
 
@@ -334,6 +316,7 @@ class Neko(JApp):
       self.display_scripts(self.current_dir, ".")
 
     self.startloop()
+
 
 if __name__ == "__main__":
   Neko().main(*argv[1:])

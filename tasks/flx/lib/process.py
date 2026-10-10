@@ -9,8 +9,9 @@ import subprocess
 class PTYProcess:
   def __init__(self, cmd, callback=None):
     self.cmd = cmd
-    self.callback = callback
     self.stdout = []
+    self.callback = callback
+    self._env = os.environ.copy()
 
   @property
   def args(self):
@@ -27,6 +28,9 @@ class PTYProcess:
   @property
   def is_ok(self) -> bool:
     return self.returncode == 0
+    
+  def set_env(self, k, v):
+    self._env[k] = v
 
   def on_output(self, func):
     self.callback = func
@@ -42,6 +46,7 @@ class PTYProcess:
         stdout=slave,
         stderr=slave,
         close_fds=True,
+        env=self._env,
       )
 
       os.close(slave)
@@ -86,8 +91,18 @@ class CmdBuilder:
       self.args.append(flag)
     return self
 
-  def option(self, flag: str, value, condition: bool = True) -> "CmdBuilder":
-    if condition and value is not None and str(value) != "":
+  def option(
+    self,
+    flag: str,
+    value,
+    condition: bool = True
+  ) -> "CmdBuilder":
+    if (
+      condition
+      and value is not None
+      and value is not False
+      and str(value) != ""
+    ):
       self.args.extend([flag, str(value)])
     return self
 
@@ -96,7 +111,11 @@ class CmdBuilder:
       self.args.append(choices[value])
     return self
 
-  def extend(self, args, condition: bool = True) -> "CmdBuilder":
+  def extend(
+    self,
+    args,
+    condition: bool = True
+  ) -> "CmdBuilder":
     if condition and args:
       self.args.extend(str(arg) for arg in args)
     return self

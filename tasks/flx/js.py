@@ -61,6 +61,8 @@ def set_config(name: str, value: bool):
     "script-stdout-parse": "setRawOutputHTML",
     # Auto scroll on append
     "auto-append-scroll": "setAutoAppendScroll",
+    # Send message
+    "send-message-events": "setSendMessageEvents"
   }
 
   if name not in config_map:

@@ -53,7 +53,7 @@ process = subprocess.Popen(
 os.close(slave)
 
 console.print("INFO", padding=2, center=True, bg="purple-400/40")
-console.wg.copy_box(f"http://{host}:{port}", f"http://{host}:{port}")
+console.wg.copy_text(f"http://{host}:{port}", f"http://{host}:{port}")
 
 console.print(path, padding=1, bg="blue-400/40")
 

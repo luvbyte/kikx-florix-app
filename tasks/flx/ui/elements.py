@@ -31,12 +31,12 @@ class Text(Element):
     return self.inner_text(text)
 
 
+class IFrame(Element):
+  def __init__(self, *_, **kwargs):
+    super().__init__(tag="iframe", **kwargs)
 
+  def set_src(self, url):
+    self.set_property("src", url)
 
-
-# class Box(Element):
-#   def __init__(self, child: Element | None = None, width: str = "auto", height: str = "auto", fullscreen: bool = False):
-#     super().__init__(child)
-#     width, height = ("100%", "100%") if fullscreen else (width, height)
-#     self.style.add("width", width)
-#     self.style.add("height", height)
+  def set_doc(self, code):
+    self.set_property("srcdoc", code)
