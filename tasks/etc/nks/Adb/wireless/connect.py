@@ -1,17 +1,24 @@
 from flx.console import Console
-from flx.console.page import InputPage
+from flx.console.page import FormPage
 
 from flx.lib.process import sh
 
-console = Console(padding=2)
+console = Console()
 console.check_pkgs("adb")
 
-def print(text):
-  console.print(text)
 
-host = InputPage("Enter device IP", placeholder="Type here").display(console).value
-port = InputPage("Enter Port", input_type=int, placeholder="Type here").display(console).value
+options = (
+  FormPage("Adb connect options")
+  .add_text("host", "Host", required=True)
+  .add_number("port", "Port", required=True)
+  .display(console)
+)
 
+if not options:
+  exit()
+
+host = options["host"]
+port = options["port"]
 
 console.clear()
 print(f"Connecting: [blue]{host}[/blue]:{port}")

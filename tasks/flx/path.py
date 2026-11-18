@@ -7,6 +7,7 @@ APP_PATH = Path(environ["KIKX_APP_PATH"])
 HOME_PATH = Path(environ["KIKX_HOME_PATH"])
 STORAGE_PATH = Path(environ["KIKX_STORAGE_PATH"])
 APP_DATA_PATH = Path(environ["KIKX_APP_DATA_PATH"])
+APP_CACHE_PATH = Path(environ["KIKX_APP_CACHE_PATH"])
 
 
 # Join path safely

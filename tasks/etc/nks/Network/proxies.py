@@ -81,7 +81,11 @@ open_proxy = OpenProxy()
 
 def ask_count(max_length=None):
   available = max_length or open_proxy.proxies_length
-  return int(InputPage(body=f"Availbale ({available})", input_type=int, placeholder=f"Enter proxies count ({available})", min_length=1, max_length=available).display(console).value)
+  count = InputPage(body=f"Availbale ({available})", input_type=int, placeholder=f"Enter proxies count ({available})", min_length=1, max_length=available).display(console)
+  if count is None:
+    exit()
+
+  return int(count)
 
 def print_proxies(proxies, label=None):
   for proxy in proxies:

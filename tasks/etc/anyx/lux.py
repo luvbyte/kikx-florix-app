@@ -1,3 +1,5 @@
+import flx.loading.hearts
+
 import importlib
 
 from lupa import LuaRuntime
@@ -5,8 +7,8 @@ from flx.console import Console
 
 
 
-console = Console()
 runtime = LuaRuntime()
+console = Console()
 
 runtime.globals().scr = console
 runtime.globals().print = console.print

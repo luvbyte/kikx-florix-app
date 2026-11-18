@@ -3,11 +3,12 @@ from time import sleep
 
 from flx.js import update_element
 
-from flx.ui import Animate, Div
+from flx.ui import Animate, Div, IFrame
 from flx.lib.crypto import generate_uuid
 from flx.lib.utils import sanitize_html, clean
 
 from flx.widgets.fs import FSWrapper
+
 
 # Pages Console
 class ConsolePage:
@@ -115,7 +116,7 @@ class Page:
         <!-- Left Side -->
         <div class="flex items-center gap-2">
           {self.render_back_button()}
-          {f'<h1 class="text-lg text-bold truncate">{self.to_text(self.title)}</h1>' if self.title else ''}
+          {f'<h1 class="text-lg text-bold break-all">{self.to_text(self.title)}</h1>' if self.title else ''}
         </div>
 
         <!-- Right Side -->
@@ -155,23 +156,22 @@ class OptionsPage(Page):
     banner: str | None = None,
     back_button: bool = False,
     close_button: bool = False,
-    display_index: bool = False
+    justify: str = "start" # start, center, end
   ) -> None:
     super().__init__(title=title, banner=banner, back_button=back_button, close_button=close_button)
     self.options = options
-    self.display_index = display_index
+    self.justify = justify
 
   def render(self) -> Animate:
     options = []
 
     for index, option in enumerate(self.options):
-      index_tag = f'<span class="min-w-2 text-blue-400">{index + 1}</span>' if self.display_index else ""
-      
-      code = f'<div onclick="sendInput({index + 1})" class="px-2 py-3 border-b border-white/40 flex items-center gap-2 active:bg-white/20 transition-colors">{index_tag}{self.to_text(option)}</div>'
+
+      code = f'<div onclick="sendInput({index + 1})" class="px-2 py-3 border rounded border-white/40 flex items-center justify-{self.justify} gap-2 active:bg-white/20 transition-colors break-all">{self.to_text(option)}</div>'
       options.append(code)
 
-    return self._render(f'<div class="flex-1 flex flex-col overflow-y-auto">{"".join(options)}</div>')
- 
+    return self._render(f'<div class="flex-1 flex flex-col gap-2 p-2 overflow-y-auto">{"".join(options)}</div>')
+
   def display(self, console, inject=None) -> PageResult:
     return self._start_input_loop(console, inject=inject, value_type=int)
 
@@ -200,6 +200,8 @@ class InputPage(Page):
     self.min_length = min_length
     self.max_length = max_length
     self.input_type = input_type
+    
+    self.exit_id = generate_uuid()
 
   def _validate(self, text: str):
     expected_type = self.input_type
@@ -250,7 +252,7 @@ class InputPage(Page):
     if self.body is None:
       return ""
     
-    return f'<div class="flex-1 flex justify-center items-center">{self.sanitize(self.body)}</div>'
+    return f'''<div class="flex-1 flex flex-col gap-4 justify-center items-center px-2"><div class="break-all">{self.sanitize(self.body)}</div><button onclick="sendInput('{self.exit_id}')" class="p-2 px-6 border border-red-400/10 bg-red-400/40 active:bg-red-400/80 rounded">Cancel</button></div>'''
 
   def set_body(self, body) -> None:
     self.body = body
@@ -258,7 +260,7 @@ class InputPage(Page):
   def render(self) -> Animate:
     return self._render(self.get_body())
 
-  def display(self, console, inject=None) -> PageResult:
+  def display(self, console, inject=None):
     el = inject or console
 
     while True:
@@ -266,14 +268,15 @@ class InputPage(Page):
       el.append(self.render())
 
       self.error_text = None
+      
+      text = console.input(self.placeholder or "", autohide=self.autohide)
+      el.clear()
+      
+      if text == self.exit_id:
+        return None
 
-      result = PageResult(console.input(self.placeholder or "", autohide=self.autohide))
-      if result.is_back or result.is_closed:
-        return result
-
-      if self.validate(result.raw_value) is not None:
-        el.clear()
-        return result
+      if self.validate(text) is not None:
+        return self.input_type(text)
 
 # Iframe Page
 class IframePage(Page):
@@ -301,8 +304,9 @@ class SelectionPage(Page):
   def __init__(
     self,
     items: dict[str, str] = dict(),
-    title: str | None = None,
-    selected: list[str] = list()
+    title: str | None = "Multi Select Items",
+    selected: list[str] = list(),
+    justify: str = "start" # start, center, end
   ) -> None:
     super().__init__()
 
@@ -311,6 +315,8 @@ class SelectionPage(Page):
     self.title: str | None = title
     self.items: dict[str, str] = items
     self.selected: list[str] = selected
+    
+    self.justify = justify
   
   def add(self, label: str, name: str) -> "SelectionPage":
     self.items[label] = name
@@ -321,7 +327,7 @@ class SelectionPage(Page):
       return ""
 
     return f"""
-      <h1 class="p-2 bg-pink-400/60 border-b border-pink-400/60 text-white text-center text-lg">{self.to_text(self.title)}</h1>
+      <h1 class="p-2 bg-pink-400/60 border-b border-pink-400/60 text-white text-center text-lg break-all">{self.to_text(self.title)}</h1>
     """
 
   def render_items(self) -> list[str]:
@@ -342,7 +348,7 @@ class SelectionPage(Page):
               .map(e => e.dataset.name);
             document.getElementById('{self.uid}').value = JSON.stringify(values);
           "
-          class="px-2 py-3 border-b border-b-white/40 flex items-center gap-2 cursor-pointer transition-colors {'bg-white/20' if is_selected else ''}">
+          class="px-2 py-3 border border-white/40 rounded flex items-center justify-{self.justify} gap-2 cursor-pointer transition-colors break-all {'bg-white/20' if is_selected else ''}">
           {self.to_text(label)}
         </div>
         """
@@ -360,7 +366,7 @@ class SelectionPage(Page):
           id="{self.uid}"
           value='{json.dumps(list(self.selected))}'>
 
-        <div class="flex-1 flex flex-col overflow-y-auto">
+        <div class="flex-1 flex flex-col gap-2 p-2 overflow-y-auto">
           {''.join(items)}
         </div>
 
@@ -1057,7 +1063,7 @@ class LoadingPage:
     return Animate(Div(f"""
       {self.render_loading_icon()}
       <h1>{self.render_label()}</h1>
-    """).add_class("bg-black/60 flex-1 flex flex-col justify-center items-center overflow-hidden"))
+    """).add_class("bg-black/20 flex-1 flex flex-col justify-center items-center overflow-hidden"))
 
   def display(self, console, inject=None):
     el = inject or console
@@ -1089,3 +1095,61 @@ class AnimationPage:
 
     el.clear()
 
+# Animate Frames Page
+class AnimateFramesPage:
+  def __init__(self, frames, fps=4):
+    self.iframe = IFrame(attrs={
+      "sandbox": "allow-scripts",
+      "srcdoc": self.srcdoc_render(frames, fps=fps)
+    }, class_list=["flex-1", "overflow-hidden"])
+
+  def srcdoc_render(self, frames, fps=4):
+    return f"""
+      <html>
+        <body style="
+          margin:0;
+          padding:0;
+          background:transparent;
+          color:white;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          height:100vh;
+          overflow:hidden;
+        ">
+          <pre id="a" style="
+            margin:0;
+            padding:0;
+            text-align:center;
+            font-size:24px;
+            opacity:60%;
+          "></pre>
+  
+          <script>
+            const f = {json.dumps(frames, ensure_ascii=False)};
+            const a = document.getElementById("a");
+  
+            const fps = {fps};
+            const frameTime = 1000 / fps;
+  
+            let i = 0;
+            let lastTime = 0;
+  
+            function animate(time) {{
+              if (time - lastTime >= frameTime) {{
+                a.textContent = f[i++ % f.length];
+                lastTime = time;
+              }}
+  
+              requestAnimationFrame(animate);
+            }}
+  
+            requestAnimationFrame(animate);
+          </script>
+        </body>
+      </html>
+    """
+  
+  def display(self, el):
+    el.clear()
+    el.append(self.iframe)

@@ -134,7 +134,7 @@ class Panel(Div):
     # Begin panel content
     header_html = f'<div class="font-bold text-lg">{title}</div>'
     message_html = f'<div class="whitespace-pre-wrap break-all">{message}</div>'
-    
+
     super().__init__(f'''
       <details {"open" if open_by_default else ""} class="p-2 {bg_class} {text_class} border-l-4 border-white/20 shadow-sm group">
         <summary class="py-2 cursor-pointer font-semibold text-white/90">{title}</summary>

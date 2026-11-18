@@ -62,18 +62,24 @@ class Label(Element):
 # === Base Components ===
 
 class Button(Element):
-  def __init__(self, label, style="primary", theme=Theme()):
-    super().__init__(label.upper(), tag="button")
+  def __init__(self, label, click=None, style="primary", theme=Theme()):
+    super().__init__(label, tag="button")
     self.add_class("p-1 px-3 font-bold rounded-lg rounded-tl-none rounded-br-none active:scale-105 shadow-lg", theme(style))
+    
+    if click:
+      self.click(click)
+
+  def click(self, cmd: str):
+    self.set_property("onclick", f"sendInput('{cmd}')")
 
 class Row(Element):
-  def __init__(self, elements, gap=0, wrap=True, theme=Theme()):
+  def __init__(self, *elements, gap=0, wrap=True, theme=Theme()):
     super().__init__(*elements)
     wrap = "wrap" if wrap else "no-wrap"
     self.add_class(f"flex flex-{wrap} gap-{gap}")
 
 class Column(Element):
-  def __init__(self, elements, gap=0, wrap=True):
+  def __init__(self, *elements, gap=0, wrap=True):
     super().__init__(*elements)
     wrap = "wrap" if wrap else "no-wrap"
     self.add_class(f"flex flex-col flex-{wrap} gap-{gap}")

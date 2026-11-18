@@ -340,10 +340,10 @@ class XADB:
       "device": self.selected.name,
       "pulls": pulls_count,
       "clist": clist_count,
-      "path": f"etc/xadb/{self.selected.uploads_name}"
+      "path": f"etc/florix/xadb/{self.selected.uploads_name}"
     })
 
-    open_app("com.kikx.explorer", path=f"home://etc/xadb/{self.selected.uploads_name}")
+    open_app("com.kikx.explorer", path=f"home://etc/florix/xadb/{self.selected.uploads_name}")
 
     scr.append('<div class="min-h-32"></div>')
 

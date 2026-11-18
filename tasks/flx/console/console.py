@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from flx import panel, js
 from flx.os import is_installed
 from flx.ui.helpers import ClassBuilder
-from flx.ui import Div, Animate, Pre
+from flx.ui import Div, Animate, Pre, Text
 from flx.utils import check_version
 from flx.lib.utils import clean, escape, bclean, get_item, sanitize_html
 
@@ -79,7 +79,7 @@ class Console:
   
   def append(self, el, auto_scroll: bool = False) -> None:
     self.box.append(el)
-    if self.auto_scroll or auto_scroll:
+    if self.auto_scroll and auto_scroll:
       self.scroll_to_bottom()
 
   def replace(self, el) -> None:
@@ -159,7 +159,7 @@ class Console:
 
   def color_box(self, text: str, color: str = "gray", effect="fadeIn"):
     div = Div(f"""
-      <div class="bg-{color}-400/60 border-b border-{color}-300/60 p-2 text-{color}-100 shadow-sm">
+      <div class="bg-{color}-400/60 border-b border-{color}-300/60 p-2 text-{color}-100 shadow-sm break-all">
         {clean(text)}
       </div>
     """)
@@ -174,6 +174,18 @@ class Console:
 
   def br(self, times: int = 1) -> None:
     self.append(Div("<br>" * times))
+
+  def loader(self, text: str = "") -> Text:
+    self.clear()
+
+    el = Text(text)
+    
+    self.append(Div(
+      Div().add_class("border-white border-b w-6 h-6 animate-spin rounded-full"),
+      el
+    ).add_class("flex-1 flex flex-col gap-2 items-center justify-center"))
+    
+    return el
 
   # -------------------------
   # Input
@@ -307,13 +319,18 @@ class ConsoleWidgets:
     self.console.append("".join(html))
 
   def mini_table(self, data: dict, color: str = "white/60") -> None:
-    rows = "".join([
-      f'<div class="flex justify-between py-2 border-b border-white/5 text-{color}">'
-      f'<span class="font-semibold">{clean(k)}</span><span>{clean(v)}</span></div>'
+    # Build table rows with proper text wrapping
+    rows = "".join(
+      f'<div class="flex justify-between gap-2 py-2 border-b border-white/5 text-{color}">'
+      f'<span class="min-w-0 flex-1 font-semibold [overflow-wrap:anywhere]">{clean(str(k))}</span>'
+      f'<span class="min-w-0 flex-1 text-right [overflow-wrap:anywhere]">{clean(str(v))}</span>'
+      f'</div>'
       for k, v in data.items()
-    ])
-    self.console.append(f'<div class="px-2">{rows}</div>')
+    )
 
+    # Append the table to the console
+    self.console.append(f'<div class="px-2 min-w-0">{rows}</div>')
+  
   # Code Block
   def code(self, code: str, language: str = "") -> None:
     code = clean(code)

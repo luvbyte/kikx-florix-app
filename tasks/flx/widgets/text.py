@@ -9,7 +9,7 @@ class LoadingText(Div):
   def __init__(self, text: str = ""):
     super().__init__(f"""
       <div class="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-gray-300 border-t-blue-500/60"></div>
-      <span class="text-sm">{clean(text)}</span>
+      <span class="text-sm truncate">{clean(text)}</span>
     """)
     self.add_class("bg-white/10 h-8 flex items-center gap-2 p-2")
 
@@ -46,7 +46,7 @@ class TypingText(Div):
   def __init__(self, text: str = ""):
     super().__init__()
     
-    self.add_class("p-2")
+    self.add_class("break-all")
 
     self._text = clean(text)
     self._stop = False
